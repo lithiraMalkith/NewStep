@@ -3,5 +3,11 @@ node_modules
 out
 .DS_Store
 *.tsbuildinfo
+# All env files with secrets — NEVER commit these
 .env.local
-.agentsgit add
+.env.vercel
+.env*.local
+.env
+# But DO allow the example file (no real secrets)
+!.env.example
+.agents
