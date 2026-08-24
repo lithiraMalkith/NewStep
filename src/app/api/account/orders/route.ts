@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    let orders: any[] = []
+    let ordersMap = new Map<string, any>()
 
     if (ref) {
       // Direct lookup by orderRef
@@ -28,32 +28,52 @@ export async function GET(req: NextRequest) {
         .get()
 
       if (!snapshot.empty) {
-        orders = serializeDocs(snapshot)
+        serializeDocs(snapshot).forEach((o: any) => { if (o) ordersMap.set(o.id, o) })
       } else {
         // Try looking up by document ID
         const doc = await adminDb.collection('orders').doc(ref.trim()).get()
         if (doc.exists) {
-          orders = [serializeDoc(doc)]
+          const serialized = serializeDoc(doc)
+          if (serialized) ordersMap.set(serialized.id, serialized)
         }
       }
-    } else if (email) {
-      const snapshot = await adminDb
-        .collection('orders')
-        .where('customer.email', '==', email.toLowerCase())
-        .limit(50)
-        .get()
-      orders = serializeDocs(snapshot)
-      orders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    } else if (phone) {
-      const cleanPhone = phone.replace(/\s|-/g, '')
-      const snapshot = await adminDb
-        .collection('orders')
-        .where('customer.phone', '==', cleanPhone)
-        .limit(50)
-        .get()
-      orders = serializeDocs(snapshot)
-      orders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    } else {
+      if (email) {
+        const lowerEmail = email.toLowerCase()
+        const snapshot1 = await adminDb
+          .collection('orders')
+          .where('customer.email', '==', lowerEmail)
+          .limit(50)
+          .get()
+        serializeDocs(snapshot1).forEach((o: any) => { if (o) ordersMap.set(o.id, o) })
+        
+        // Sometimes emails are stored with mixed casing since we didn't force lowercase earlier
+        if (email !== lowerEmail) {
+          const snapshot2 = await adminDb
+            .collection('orders')
+            .where('customer.email', '==', email)
+            .limit(50)
+            .get()
+          serializeDocs(snapshot2).forEach((o: any) => { if (o) ordersMap.set(o.id, o) })
+        }
+        
+        // What if they are saved as completely empty string but matching happens? 
+        // We only queried specific email so we are good.
+      }
+
+      if (phone) {
+        const cleanPhone = phone.replace(/\s|-/g, '')
+        const snapshot = await adminDb
+          .collection('orders')
+          .where('customer.phone', '==', cleanPhone)
+          .limit(50)
+          .get()
+        serializeDocs(snapshot).forEach((o: any) => { if (o) ordersMap.set(o.id, o) })
+      }
     }
+
+    let orders = Array.from(ordersMap.values())
+    orders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
     return NextResponse.json({ success: true, data: orders })
   } catch (error) {
