@@ -86,8 +86,9 @@ export async function POST(req: NextRequest) {
       status: 'pending',
       customer: {
         name: data.fullName,
-        email: data.email || '',
+        email: (data.email || '').toLowerCase().trim(),
         phone: data.phone,
+        uid: data.userId || null,
       },
       deliveryAddress: {
         address: data.address,

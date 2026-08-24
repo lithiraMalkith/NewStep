@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { useGSAP } from '@gsap/react'
 import { gsap } from '@/lib/gsap-config'
+import { auth } from '@/lib/firebase'
 import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
 export default function AdminLoginPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
-  const { user, signInWithEmail, signInWithGoogle, loading: authLoading } = useAuth()
+  const { user, role, signInWithEmail, signInWithGoogle, signOut, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -26,9 +27,13 @@ export default function AdminLoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.push('/admin')
+      if (role && role !== 'customer') {
+        router.push('/admin')
+      } else if (role === 'customer') {
+        setError('Access Denied: Your current account does not have admin privileges.')
+      }
     }
-  }, [user, authLoading, router])
+  }, [user, role, authLoading, router])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,6 +41,13 @@ export default function AdminLoginPage() {
     setLoading(true)
     try {
       await signInWithEmail(email, password)
+      const tokenResult = await auth.currentUser?.getIdTokenResult()
+      const userRole = (tokenResult?.claims?.role as string) || 'customer'
+      if (userRole === 'customer') {
+        setError('Access Denied: This account does not have admin privileges.')
+        await signOut()
+        return
+      }
       router.push('/admin')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Check your credentials.')
@@ -49,6 +61,13 @@ export default function AdminLoginPage() {
     setLoading(true)
     try {
       await signInWithGoogle()
+      const tokenResult = await auth.currentUser?.getIdTokenResult()
+      const userRole = (tokenResult?.claims?.role as string) || 'customer'
+      if (userRole === 'customer') {
+        setError('Access Denied: This account does not have admin privileges.')
+        await signOut()
+        return
+      }
       router.push('/admin')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Google sign-in failed.')

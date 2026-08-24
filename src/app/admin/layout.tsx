@@ -83,6 +83,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!user) return null
 
+  if (role === 'customer') {
+    return (
+      <div className="min-h-screen bg-[#0D0D0D] flex flex-col items-center justify-center p-6 text-center" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+        <div className="w-16 h-16 rounded-full bg-[#E05252]/10 border border-[#E05252]/30 flex items-center justify-center text-[#E05252] mb-5">
+          <Shield className="w-8 h-8" />
+        </div>
+        <h1 className="text-2xl font-bold text-[#F0EDE8] mb-2">Access Denied</h1>
+        <p className="text-[#6B6B6B] text-sm max-w-md mb-6 leading-relaxed">
+          You are currently signed in as <strong className="text-[#F0EDE8]">{user.email}</strong>, which does not have administrator privileges.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/"
+            className="px-5 py-2.5 rounded-lg bg-[#1E1E1E] text-[#F0EDE8] text-sm hover:bg-[#2A2A2A] transition-colors"
+          >
+            Back to Store
+          </Link>
+          <button
+            onClick={async () => {
+              await signOut()
+              router.push('/adminlogin')
+            }}
+            className="px-5 py-2.5 rounded-lg bg-[#C9A84C] text-[#0D0D0D] font-semibold text-sm hover:bg-[#E2C270] transition-colors"
+          >
+            Sign In with Admin Account
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const filteredItems = SIDEBAR_ITEMS.filter((item) => hasPermission(item.permission))
 
   const isActive = (href: string) => {

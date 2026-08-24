@@ -89,11 +89,11 @@ export function getDefaultAddress(): SavedAddress | null {
   return list.find((a) => a.isDefault) || list[0] || null
 }
 
-export async function fetchCustomerOrders(email?: string, phone?: string): Promise<Order[]> {
+export async function fetchCustomerOrders(email?: string, phone?: string, userId?: string): Promise<Order[]> {
   const localMap = readOrders()
   const localList = Object.values(localMap)
 
-  if (!email && !phone) {
+  if (!email && !phone && !userId) {
     return localList.sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
@@ -103,6 +103,7 @@ export async function fetchCustomerOrders(email?: string, phone?: string): Promi
     const params = new URLSearchParams()
     if (email) params.set('email', email)
     if (phone) params.set('phone', phone)
+    if (userId) params.set('userId', userId)
 
     const res = await fetch(`/api/account/orders?${params.toString()}`)
     if (res.ok) {
@@ -141,10 +142,8 @@ export async function fetchCustomerOrders(email?: string, phone?: string): Promi
             : 'Pending',
         }))
 
-        const map = new Map<string, Order>()
-        for (const o of localList) map.set(o.id, o)
-        for (const o of serverOrders) map.set(o.id, o)
-        return Array.from(map.values()).sort(
+        // When logged in (email or phone provided), we strictly return server orders only
+        return serverOrders.sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )
       }
@@ -153,6 +152,11 @@ export async function fetchCustomerOrders(email?: string, phone?: string): Promi
     console.error('Error fetching server orders:', err)
   }
 
+  // If email, phone, or userId was provided but API failed, return empty array to prevent 
+  // showing local orders that don't belong to the logged-in user.
+  if (email || phone || userId) return []
+
+  // If not logged in, fallback to showing local guest orders
   return localList.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )

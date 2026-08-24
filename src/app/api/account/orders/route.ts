@@ -9,10 +9,11 @@ export async function GET(req: NextRequest) {
     const email = searchParams.get('email')?.trim()
     const phone = searchParams.get('phone')?.trim()
     const ref = searchParams.get('ref')?.trim()
+    const userId = searchParams.get('userId')?.trim()
 
-    if (!email && !phone && !ref) {
+    if (!email && !phone && !ref && !userId) {
       return NextResponse.json(
-        { success: false, error: 'Please provide valid email, phone, or order reference' },
+        { success: false, error: 'Please provide valid email, phone, userId, or order reference' },
         { status: 400 }
       )
     }
@@ -66,6 +67,15 @@ export async function GET(req: NextRequest) {
         const snapshot = await adminDb
           .collection('orders')
           .where('customer.phone', '==', cleanPhone)
+          .limit(50)
+          .get()
+        serializeDocs(snapshot).forEach((o: any) => { if (o) ordersMap.set(o.id, o) })
+      }
+
+      if (userId) {
+        const snapshot = await adminDb
+          .collection('orders')
+          .where('customer.uid', '==', userId)
           .limit(50)
           .get()
         serializeDocs(snapshot).forEach((o: any) => { if (o) ordersMap.set(o.id, o) })

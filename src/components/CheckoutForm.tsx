@@ -92,7 +92,8 @@ export default function CheckoutForm() {
     const orderPayload = {
       fullName: form.fullName.trim(),
       phone: cleanPhone,
-      email: form.email.trim() || undefined,
+      email: form.email.trim() || user?.email || undefined,
+      userId: user?.uid || undefined,
       address: form.address.trim(),
       city: form.city.trim(),
       district: form.district,

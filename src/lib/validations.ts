@@ -40,6 +40,7 @@ export const checkoutSchema = z.object({
   city: z.string().min(1, 'City is required'),
   district: z.string().min(1, 'District is required'),
   notes: z.string().max(500).optional().or(z.literal('')),
+  userId: z.string().optional(),
   items: z.array(z.object({
     productId: z.string(),
     slug: z.string(),

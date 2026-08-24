@@ -23,7 +23,11 @@ export default function RecentOrdersPage() {
   const loadOrders = async () => {
     setLoading(true)
     try {
-      const list = await fetchCustomerOrders(user?.email || undefined, user?.phoneNumber || undefined)
+      const list = await fetchCustomerOrders(
+        user?.email || undefined,
+        user?.phoneNumber || undefined,
+        user?.uid || undefined
+      )
       // Deduplicate orders by ID/orderRef
       const uniqueOrders = list.filter((order, index, self) =>
         index === self.findIndex((o) => (o.id || (o as any).orderRef) === (order.id || (order as any).orderRef))
