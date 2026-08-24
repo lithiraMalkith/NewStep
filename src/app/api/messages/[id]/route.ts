@@ -5,11 +5,11 @@ import { withAuth } from '@/lib/auth-middleware'
 // PATCH /api/messages/[id] — Update message status (Admin only)
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return withAuth(req, async () => {
     try {
-      const id = params.id
+      const { id } = await params
       const body = await req.json()
 
       if (!body.status) {
@@ -35,11 +35,11 @@ export async function PATCH(
 // DELETE /api/messages/[id] — Delete a message (Admin only)
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return withAuth(req, async () => {
     try {
-      const id = params.id
+      const { id } = await params
       await adminDb.collection('messages').doc(id).delete()
 
       return NextResponse.json({ success: true, data: { id, message: 'Message deleted' } })
