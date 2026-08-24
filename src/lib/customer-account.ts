@@ -141,8 +141,14 @@ export async function fetchCustomerOrders(email?: string, phone?: string): Promi
             : 'Pending',
         }))
 
+        const filteredLocal = localList.filter((o) => {
+          const matchEmail = email && o.customer?.email?.toLowerCase() === email.toLowerCase()
+          const matchPhone = phone && o.customer?.phone?.replace(/\s|-/g, '') === phone.replace(/\s|-/g, '')
+          return matchEmail || matchPhone
+        })
+
         const map = new Map<string, Order>()
-        for (const o of localList) map.set(o.id, o)
+        for (const o of filteredLocal) map.set(o.id, o)
         for (const o of serverOrders) map.set(o.id, o)
         return Array.from(map.values()).sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()

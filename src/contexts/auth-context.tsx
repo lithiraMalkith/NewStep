@@ -51,9 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const localAvatar = typeof window !== 'undefined'
           ? localStorage.getItem(`newstep.avatar.${firebaseUser.uid}`)
           : null
-        setUser(localAvatar ? ({ ...firebaseUser, photoURL: localAvatar } as User) : firebaseUser)
+        if (localAvatar) {
+          try {
+            Object.defineProperty(firebaseUser, 'photoURL', { get: () => localAvatar, configurable: true })
+          } catch {}
+        }
+        setUser(firebaseUser)
         const tokenResult = await firebaseUser.getIdTokenResult()
-        const userRole = (tokenResult.claims.role as string) || 'support'
+        const userRole = (tokenResult.claims.role as string) || 'customer'
         setRole(userRole)
 
         // Resolve permissions

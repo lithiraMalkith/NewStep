@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
         email: email || '',
         displayName: displayName || email?.split('@')[0] || 'User',
         photoURL: photoURL || null,
-        role: 'support', // Default role for new users
+        role: 'customer', // Default role for new users
         isActive: true,
         createdAt: now,
         lastLoginAt: now,
@@ -40,14 +40,14 @@ export async function POST(req: NextRequest) {
       await userRef.set(userData)
 
       // Set custom claim for role
-      await adminAuth.setCustomUserClaims(uid, { role: 'support' })
+      await adminAuth.setCustomUserClaims(uid, { role: 'customer' })
     } else {
       // Existing user — update last login
       const existingData = userDoc.data()!
       await userRef.update({ lastLoginAt: new Date() })
 
       // Ensure custom claims are in sync
-      const existingRole = existingData.role || 'support'
+      const existingRole = existingData.role || 'customer'
       await adminAuth.setCustomUserClaims(uid, { role: existingRole })
     }
 

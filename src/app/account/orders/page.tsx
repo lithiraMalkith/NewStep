@@ -24,7 +24,11 @@ export default function RecentOrdersPage() {
     setLoading(true)
     try {
       const list = await fetchCustomerOrders(user?.email || undefined, user?.phoneNumber || undefined)
-      setOrders(list)
+      // Deduplicate orders by ID/orderRef
+      const uniqueOrders = list.filter((order, index, self) =>
+        index === self.findIndex((o) => (o.id || (o as any).orderRef) === (order.id || (order as any).orderRef))
+      )
+      setOrders(uniqueOrders)
     } catch (err) {
       console.error('Error loading orders:', err)
     } finally {
@@ -51,7 +55,10 @@ export default function RecentOrdersPage() {
       const data = await res.json()
 
       if (data.success && data.data && data.data.length > 0) {
-        setOrders(data.data)
+        const uniqueOrders = data.data.filter((order: any, index: number, self: any[]) =>
+          index === self.findIndex((o) => (o.id || o.orderRef) === (order.id || order.orderRef))
+        )
+        setOrders(uniqueOrders)
       } else {
         setLookupError(`No order found matching "${q}". Check the order reference or phone number.`)
       }

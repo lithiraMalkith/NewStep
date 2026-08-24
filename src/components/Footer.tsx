@@ -16,7 +16,7 @@ const COLUMNS = [
       { href: "/contact", label: "Contact Us" },
       { href: "/policies/delivery", label: "Delivery" },
       { href: "/policies/returns", label: "Returns & Exchange" },
-      { href: "/product/velocity-runner-white#size-guide", label: "Size Guide" },
+      { href: "/size-guide", label: "Size Guide" },
     ],
   },
   {

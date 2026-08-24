@@ -6,13 +6,13 @@ import { serializeDocs, serializeDoc } from '@/lib/admin-service'
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const email = searchParams.get('email')
-    const phone = searchParams.get('phone')
-    const ref = searchParams.get('ref')
+    const email = searchParams.get('email')?.trim()
+    const phone = searchParams.get('phone')?.trim()
+    const ref = searchParams.get('ref')?.trim()
 
     if (!email && !phone && !ref) {
       return NextResponse.json(
-        { success: false, error: 'Please provide email, phone, or order reference' },
+        { success: false, error: 'Please provide valid email, phone, or order reference' },
         { status: 400 }
       )
     }
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     } else if (email) {
       const snapshot = await adminDb
         .collection('orders')
-        .where('customer.email', '==', email.trim().toLowerCase())
+        .where('customer.email', '==', email.toLowerCase())
         .limit(50)
         .get()
       orders = serializeDocs(snapshot)

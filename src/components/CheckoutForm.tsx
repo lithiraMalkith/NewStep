@@ -133,9 +133,6 @@ export default function CheckoutForm() {
           status: "Pending",
         };
         saveOrder(savedOrderObj);
-        if (data.data.id && data.data.id !== targetRef) {
-          saveOrder({ ...savedOrderObj, id: data.data.id });
-        }
       } else {
         // Fallback local save if server responds with error
         saveOrder({
@@ -169,7 +166,7 @@ export default function CheckoutForm() {
     }
   };
 
-  if (ready && lines.length === 0) {
+  if (ready && lines.length === 0 && !submitting) {
     return (
       <div className="container-x flex flex-col items-center gap-5 py-24 text-center">
         <h1 className="display text-3xl">Nothing to check out</h1>

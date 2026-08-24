@@ -38,7 +38,7 @@ export async function withAuth(
     const decoded = await adminAuth.verifyIdToken(token)
 
     // Get role from custom claims
-    const role = (decoded.role as string) || 'support'
+    const role = (decoded.role as string) || 'customer'
 
     // Check permission if required
     if (requiredPermission) {

@@ -97,10 +97,11 @@ export default function AdminDashboardPage() {
   if (!stats) return null
 
   const statCards = [
-    { label: 'Revenue Today', value: formatPrice(stats.revenueToday), icon: <DollarSign className="w-5 h-5" />, color: 'text-[#C9A84C]', bg: 'bg-[#C9A84C]/10', trend: stats.revenueTrend, trendLabel: `${stats.revenueTrend > 0 ? '+' : ''}${stats.revenueTrend}%` },
-    { label: 'Orders Today', value: stats.ordersToday, icon: <ShoppingCart className="w-5 h-5" />, color: 'text-[#C9A84C]', bg: 'bg-[#C9A84C]/10', trend: stats.ordersTrend, trendLabel: `${stats.ordersTrend > 0 ? '+' : ''}${stats.ordersTrend}` },
-    { label: 'Pending Orders', value: stats.pendingOrders, icon: <Clock className="w-5 h-5" />, color: 'text-[#C9A84C]', bg: 'bg-[#C9A84C]/10' },
-    { label: 'Low Stock Alert', value: stats.lowStockProducts, icon: <AlertTriangle className="w-5 h-5" />, color: 'text-[#E05252]', bg: 'bg-[#E05252]/10' },
+    { label: 'Total Orders', value: stats.ordersThisMonth, icon: <ShoppingCart className="w-5 h-5" />, color: 'text-[#C9A84C]', bg: 'bg-[#C9A84C]/10', trend: stats.ordersTrend, trendLabel: `${stats.ordersTrend > 0 ? '+' : ''}${stats.ordersTrend}` },
+    { label: 'Total Products', value: stats.totalProducts, icon: <Package className="w-5 h-5" />, color: 'text-[#C9A84C]', bg: 'bg-[#C9A84C]/10' },
+    { label: 'Total Customers', value: stats.totalCustomers, icon: <Users className="w-5 h-5" />, color: 'text-[#C9A84C]', bg: 'bg-[#C9A84C]/10' },
+    { label: 'Revenue', value: formatPrice(stats.revenueThisMonth), icon: <DollarSign className="w-5 h-5" />, color: 'text-[#C9A84C]', bg: 'bg-[#C9A84C]/10', trend: stats.revenueTrend, trendLabel: `${stats.revenueTrend > 0 ? '+' : ''}${stats.revenueTrend}%` },
+    { label: 'Pending Orders', value: stats.pendingOrders, icon: <Clock className="w-5 h-5" />, color: 'text-[#E05252]', bg: 'bg-[#E05252]/10' },
   ]
 
   const quickActions = [
@@ -118,7 +119,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {statCards.map((card) => (
           <div key={card.label} className="stat-card bg-[#161616] rounded-xl border border-[#2A2A2A] p-5 relative overflow-hidden hover:border-[#3A3A3A] transition-colors">
             <div className="relative z-10">

@@ -82,59 +82,116 @@ export default function HomePage() {
         </Reveal>
       </section>
 
-      {/* Category tiles */}
+      {/* Redesigned Shop by Category Section */}
       <section className="container-x mt-20">
         <Reveal>
-          <h2 className="display text-[clamp(1.75rem,5vw,3rem)]">Shop by category</h2>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <p className="eyebrow text-muted">Explore collections</p>
+              <h2 className="display mt-2 text-[clamp(1.75rem,5vw,3rem)] tracking-tight">Shop by category</h2>
+            </div>
+          </div>
         </Reveal>
-        <Reveal stagger className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {categories.map((c) => (
-            <Link
-              key={c.slug}
-              href={`/shop/${c.slug}`}
-              className="group relative block aspect-[3/4] overflow-hidden bg-mist"
-            >
-              <Image
-                src={c.image}
-                alt={`${c.name} footwear`}
-                fill
-                sizes="(max-width: 1024px) 50vw, 25vw"
-                className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 p-4 text-paper">
-                <h3 className="display text-2xl">{c.name}</h3>
-                <p className="mt-1 text-sm text-white/75">{c.blurb}</p>
-              </div>
-            </Link>
-          ))}
-        </Reveal>
-      </section>
 
-      {/* Editorial banner */}
-      <section className="relative mt-20 isolate overflow-hidden bg-ink text-paper">
-        <Image
-          src="/images/banner.jpg"
-          alt="Night street walk in black sneakers"
-          width={1600}
-          height={900}
-          loading="lazy"
-          className="absolute inset-0 h-full w-full object-cover opacity-60"
-        />
-        <div className="container-x relative flex min-h-[60svh] flex-col justify-center py-16">
-          <Reveal>
-            <p className="eyebrow text-white/70">Built for the commute</p>
-            <h2 className="display mt-3 max-w-2xl text-[clamp(2rem,7vw,4.5rem)]">
-              From the bus stand to the last mile
-            </h2>
-            <p className="mt-4 max-w-md text-[15px] text-white/75">
-              Grip, cushioning and a sole that survives Colombo pavements.
-            </p>
-            <Link href="/shop/mens" className="btn bg-paper text-ink hover:bg-mist-2 mt-8 self-start">
-              Shop men&apos;s
-            </Link>
-          </Reveal>
-        </div>
+        <Reveal stagger className="mt-8 grid grid-cols-1 md:grid-cols-12 grid-rows-[auto] gap-4 md:gap-6 min-h-[600px]">
+          {/* Main Men's Banner - Takes up 8 columns */}
+          <Link
+            href="/shop/mens"
+            className="group relative block overflow-hidden bg-ink md:col-span-8 md:row-span-2 rounded-2xl min-h-[300px] md:min-h-full"
+          >
+            <Image
+              src="/images/banner.jpg"
+              alt="Shop Men"
+              fill
+              sizes="(max-width: 768px) 100vw, 66vw"
+              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 opacity-80"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-6 md:p-10 text-paper flex flex-col justify-end">
+              <span className="eyebrow text-white/70 mb-2">Built for the commute</span>
+              <h3 className="display text-3xl md:text-5xl mb-2">Men's Collection</h3>
+              <p className="text-white/80 text-[15px] max-w-sm mb-6 hidden md:block">
+                Grip, cushioning and a sole that survives Colombo pavements. Discover our flagship running and lifestyle shoes.
+              </p>
+              <span className="btn bg-paper text-ink group-hover:bg-mist-2 self-start transition-colors">
+                Shop Men &rarr;
+              </span>
+            </div>
+          </Link>
+
+          {/* Women's Tile - 4 columns */}
+          <Link
+            href="/shop/womens"
+            className="group relative block overflow-hidden bg-mist md:col-span-4 rounded-2xl min-h-[250px] md:min-h-[288px]"
+          >
+            <Image
+              src="/images/p4.jpg"
+              alt="Shop Women"
+              fill
+              sizes="(max-width: 768px) 100vw, 33vw"
+              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-ink/80 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-6 text-paper flex flex-col justify-end">
+              <h3 className="display text-2xl md:text-3xl mb-1">Women's</h3>
+              <p className="text-white/80 text-sm mb-4">Court, casual and slides</p>
+              <span className="btn btn-outline text-paper border-white/30 group-hover:border-white group-hover:bg-white group-hover:text-ink self-start transition-all px-4 py-2 text-sm">
+                Shop Women
+              </span>
+            </div>
+          </Link>
+
+          {/* Kids' Tile - 4 columns */}
+          <Link
+            href="/shop/kids"
+            className="group relative block overflow-hidden bg-mist md:col-span-4 rounded-2xl min-h-[250px] md:min-h-[288px]"
+          >
+            <Image
+              src="/images/p6.jpg"
+              alt="Shop Kids"
+              fill
+              sizes="(max-width: 768px) 100vw, 33vw"
+              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-ink/80 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-6 text-paper flex flex-col justify-end">
+              <h3 className="display text-2xl md:text-3xl mb-1">Kids'</h3>
+              <p className="text-white/80 text-sm mb-4">School-ready and play-proof</p>
+              <span className="btn btn-outline text-paper border-white/30 group-hover:border-white group-hover:bg-white group-hover:text-ink self-start transition-all px-4 py-2 text-sm">
+                Shop Kids
+              </span>
+            </div>
+          </Link>
+
+          {/* Special Offers / Sale Tile - Full width row at the bottom */}
+          <Link
+            href="/shop/sale"
+            className="group relative block overflow-hidden bg-ink md:col-span-12 rounded-2xl min-h-[200px]"
+          >
+            <Image
+              src="/images/p5.jpg"
+              alt="Special Offers"
+              fill
+              sizes="100vw"
+              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 opacity-50"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-ink/90 via-ink/60 to-transparent" />
+            <div className="absolute inset-0 p-6 md:p-10 text-paper flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <span className="inline-block bg-[#E05252] text-white text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wider">
+                  Special Offers
+                </span>
+                <h3 className="display text-3xl md:text-4xl mb-2">Final sizes, reduced prices</h3>
+                <p className="text-white/80 text-[15px] max-w-md">
+                  Grab your favorite styles before they are gone. Up to 40% off on selected items.
+                </p>
+              </div>
+              <span className="btn bg-paper text-ink group-hover:bg-mist-2 shrink-0 transition-colors">
+                Shop Sale
+              </span>
+            </div>
+          </Link>
+        </Reveal>
       </section>
 
       {/* Sale rail */}
