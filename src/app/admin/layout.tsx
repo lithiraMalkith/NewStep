@@ -49,7 +49,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, role, hasPermission, signOut, loading, isAdmin } = useAuth()
+  const { user, role, hasPermission, signOut, loading } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -66,14 +66,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, { dependencies: [pathname] })
 
-  // Redirect to login if not authenticated or not an admin
+  // Redirect to login if not authenticated
   useEffect(() => {
-    if (!loading) {
-      if (!user || !isAdmin) {
-        router.push('/adminlogin')
-      }
+    if (!loading && !user) {
+      router.push('/adminlogin')
     }
-  }, [user, isAdmin, loading, router])
+  }, [user, loading, router])
 
   if (loading) {
     return (

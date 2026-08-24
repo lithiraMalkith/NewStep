@@ -10,7 +10,7 @@ import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 export default function AdminLoginPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
-  const { user, isAdmin, signInWithEmail, signInWithGoogle, signOut, loading: authLoading } = useAuth()
+  const { user, signInWithEmail, signInWithGoogle, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -26,14 +26,9 @@ export default function AdminLoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      if (isAdmin) {
-        router.push('/admin')
-      } else {
-        setError('Access Denied: You do not have admin privileges.')
-        signOut()
-      }
+      router.push('/admin')
     }
-  }, [user, isAdmin, authLoading, router, signOut])
+  }, [user, authLoading, router])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()

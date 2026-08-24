@@ -195,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       permissions,
       loading,
       hasPermission,
-      isAdmin: !!role && role !== 'customer',
+      isAdmin: !!role && role !== '',
       signInWithEmail,
       signUpWithEmail,
       signInWithGoogle,
