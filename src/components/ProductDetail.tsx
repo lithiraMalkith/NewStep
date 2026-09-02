@@ -6,6 +6,8 @@ import { useState } from "react";
 import { useCart } from "./CartProvider";
 import { LKR } from "@/lib/format";
 import type { Product } from "@/lib/types";
+import ReviewSection from "./ReviewSection";
+import StarRating from "./StarRating";
 
 const SIZE_GUIDE = [
   { eu: 39, uk: 6, cm: 24.5 },
@@ -132,9 +134,12 @@ export default function ProductDetail({ product }: { product: Product }) {
           )}
         </div>
 
-        <p className="mt-2 text-sm text-muted">
-          ★ {product.rating.toFixed(1)} · {product.reviewCount} reviews
-        </p>
+        {!!product.reviewCount && product.reviewCount > 0 && (
+          <div className="mt-2 flex items-center gap-2 text-sm text-muted">
+            <StarRating rating={product.rating} size="sm" />
+            <span>{product.rating.toFixed(1)} · {product.reviewCount} reviews</span>
+          </div>
+        )}
 
         {/* Size selector */}
         <div className="mt-8">
@@ -250,6 +255,11 @@ export default function ProductDetail({ product }: { product: Product }) {
             </p>
           </Accordion>
         </div>
+      </div>
+
+      {/* Reviews Section */}
+      <div className="container-x">
+        <ReviewSection productId={product.id} />
       </div>
     </div>
   );

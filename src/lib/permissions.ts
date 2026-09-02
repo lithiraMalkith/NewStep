@@ -20,6 +20,12 @@ export const PERMISSIONS = {
   MESSAGES_READ:     'messages:read',
   MESSAGES_WRITE:    'messages:write',
   MESSAGES_DELETE:   'messages:delete',
+  REVIEWS_READ:      'reviews:read',
+  REVIEWS_WRITE:     'reviews:write',
+  REVIEWS_DELETE:    'reviews:delete',
+  DISCOUNTS_READ:    'discounts:read',
+  DISCOUNTS_WRITE:   'discounts:write',
+  DISCOUNTS_DELETE:  'discounts:delete',
   ROLES_READ:        'roles:read',
   ROLES_WRITE:       'roles:write',
   ROLES_DELETE:      'roles:delete',
@@ -48,6 +54,10 @@ export const BUILT_IN_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.MESSAGES_READ,
     PERMISSIONS.MESSAGES_WRITE,
     PERMISSIONS.MESSAGES_DELETE,
+    PERMISSIONS.REVIEWS_READ,
+    PERMISSIONS.REVIEWS_WRITE,
+    PERMISSIONS.DISCOUNTS_READ,
+    PERMISSIONS.DISCOUNTS_WRITE,
   ],
 
   fulfillment: [
@@ -63,6 +73,7 @@ export const BUILT_IN_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.CUSTOMERS_READ,
     PERMISSIONS.MESSAGES_READ,
     PERMISSIONS.MESSAGES_WRITE,
+    PERMISSIONS.REVIEWS_READ,
   ],
 }
 
@@ -95,6 +106,14 @@ export const PERMISSION_GROUPS = [
   {
     label: 'Messages',
     permissions: [PERMISSIONS.MESSAGES_READ, PERMISSIONS.MESSAGES_WRITE, PERMISSIONS.MESSAGES_DELETE],
+  },
+  {
+    label: 'Reviews',
+    permissions: [PERMISSIONS.REVIEWS_READ, PERMISSIONS.REVIEWS_WRITE, PERMISSIONS.REVIEWS_DELETE],
+  },
+  {
+    label: 'Discounts',
+    permissions: [PERMISSIONS.DISCOUNTS_READ, PERMISSIONS.DISCOUNTS_WRITE, PERMISSIONS.DISCOUNTS_DELETE],
   },
   {
     label: 'Roles',

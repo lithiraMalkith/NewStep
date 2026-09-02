@@ -14,6 +14,9 @@ import type {
   UserProfile,
   CustomRole,
   SiteSettings,
+  Review,
+  Discount,
+  WishlistItem,
 } from '@/types'
 
 // ─── Core Wrapper ───
@@ -275,5 +278,96 @@ export async function uploadImage(token: string, base64Data: string): Promise<{ 
   return fetchApi<{ url: string }>('/api/upload', token, {
     method: 'POST',
     body: JSON.stringify({ image: base64Data }),
+  })
+}
+
+// ─── Reviews ───
+
+export async function fetchReviews(token: string, params?: Record<string, string>): Promise<Review[]> {
+  const query = params ? '?' + new URLSearchParams(params).toString() : ''
+  return fetchApi<Review[]>(`/api/reviews${query}`, token)
+}
+
+export async function moderateReview(
+  token: string,
+  id: string,
+  status: string
+): Promise<{ id: string; message: string }> {
+  return fetchApi<{ id: string; message: string }>(`/api/reviews/${id}`, token, {
+    method: 'PUT',
+    body: JSON.stringify({ status }),
+  })
+}
+
+export async function deleteReview(token: string, id: string): Promise<{ id: string; message: string }> {
+  return fetchApi<{ id: string; message: string }>(`/api/reviews/${id}`, token, {
+    method: 'DELETE',
+  })
+}
+
+// ─── Discounts ───
+
+export async function fetchDiscounts(token: string, params?: Record<string, string>): Promise<Discount[]> {
+  const query = params ? '?' + new URLSearchParams(params).toString() : ''
+  return fetchApi<Discount[]>(`/api/discounts${query}`, token)
+}
+
+export async function createDiscount(token: string, payload: Record<string, unknown>): Promise<Discount> {
+  return fetchApi<Discount>('/api/discounts', token, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateDiscount(
+  token: string,
+  id: string,
+  payload: Record<string, unknown>
+): Promise<{ id: string; message: string }> {
+  return fetchApi<{ id: string; message: string }>(`/api/discounts/${id}`, token, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteDiscount(token: string, id: string): Promise<{ id: string; message: string }> {
+  return fetchApi<{ id: string; message: string }>(`/api/discounts/${id}`, token, {
+    method: 'DELETE',
+  })
+}
+
+export async function validateDiscount(
+  code: string,
+  orderTotal: number,
+  categories: string[] = []
+): Promise<{ valid: boolean; discount?: Discount; discountAmount?: number; error?: string }> {
+  const response = await fetch('/api/discounts/validate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, orderTotal, categories }),
+  })
+  const payload = await response.json()
+  return payload.data || payload
+}
+
+// ─── Wishlist ───
+
+export async function fetchWishlist(token: string): Promise<WishlistItem[]> {
+  return fetchApi<WishlistItem[]>('/api/wishlist', token)
+}
+
+export async function addToWishlist(
+  token: string,
+  payload: { productId: string; productName: string; productSlug: string; productImage: string; productPrice: number }
+): Promise<WishlistItem> {
+  return fetchApi<WishlistItem>('/api/wishlist', token, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function removeFromWishlist(token: string, id: string): Promise<{ id: string; message: string }> {
+  return fetchApi<{ id: string; message: string }>(`/api/wishlist/${id}`, token, {
+    method: 'DELETE',
   })
 }

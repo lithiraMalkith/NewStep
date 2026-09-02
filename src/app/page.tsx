@@ -2,9 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import Hero from "@/components/Hero";
 import Marquee from "@/components/Marquee";
-import ProductCard from "@/components/ProductCard";
+import ProductCarousel from "@/components/ProductCarousel";
+import PromoBanner from "@/components/PromoBanner";
 import Reveal from "@/components/Reveal";
-import { categories, products } from "@/lib/products";
+import AnimatedCounter from "@/components/AnimatedCounter";
+import { adminDb } from "@/lib/firebase-admin";
+import type { Product } from "@/lib/types";
 
 const TRUST = [
   { title: "Cash on Delivery", body: "Pay only when the box is in your hands." },
@@ -31,9 +34,42 @@ const REVIEWS = [
   },
 ];
 
-export default function HomePage() {
-  const newArrivals = products.filter((p) => p.isNew || !p.compareAtPrice).slice(0, 4);
-  const onSale = products.filter((p) => p.compareAtPrice).slice(0, 4);
+async function getProducts() {
+  try {
+    const snapshot = await adminDb
+      .collection('products')
+      .where('visibility', '==', 'published')
+      .limit(20)
+      .get()
+
+    return snapshot.docs.map(doc => {
+      const data = doc.data()
+      return { 
+        id: doc.id, 
+        ...data,
+        createdAt: data.createdAt?.toDate?.() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
+      } as Product
+    })
+  } catch (error) {
+    console.error("Failed to fetch products for home page:", error)
+    return []
+  }
+}
+
+export const revalidate = 60; // Revalidate every minute
+
+export default async function HomePage() {
+  const products = await getProducts();
+  
+  // Group products for different sections
+  const newArrivals = products.filter((p) => p.isNew).slice(0, 8);
+  const bestSellers = products.filter((p) => p.isBestseller || p.rating! >= 4.5).slice(0, 8);
+  const onSale = products.filter((p) => p.compareAtPrice).slice(0, 8);
+  
+  // Set end of month for countdown
+  const now = new Date();
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
   return (
     <>
@@ -50,40 +86,77 @@ export default function HomePage() {
       />
 
       {/* Trust strip */}
-      <section className="container-x py-12">
-        <Reveal stagger className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
+      <section className="container-x py-16 md:py-24">
+        <Reveal stagger className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4">
           {TRUST.map((t) => (
-            <div key={t.title}>
-              <h2 className="text-[15px] font-semibold">{t.title}</h2>
-              <p className="mt-1 text-sm text-muted">{t.body}</p>
+            <div key={t.title} className="flex flex-col items-start border-l-2 border-ink/10 pl-5">
+              <h2 className="text-[15px] font-semibold tracking-tight">{t.title}</h2>
+              <p className="mt-2 text-sm text-muted leading-relaxed">{t.body}</p>
             </div>
           ))}
         </Reveal>
       </section>
 
-      {/* New arrivals */}
-      <section className="container-x">
-        <Reveal className="flex items-end justify-between gap-4">
-          <h2 className="display text-[clamp(1.75rem,5vw,3rem)]">New Arrivals</h2>
-          <Link href="/shop" className="link-underline shrink-0 text-[15px]">
-            Shop all
-          </Link>
-        </Reveal>
+      {/* New arrivals Carousel */}
+      {newArrivals.length > 0 && (
+        <section className="container-x mt-8 mb-24">
+          <Reveal>
+            <ProductCarousel 
+              products={newArrivals} 
+              title="New Arrivals" 
+              viewAllLink="/shop"
+            />
+          </Reveal>
+        </section>
+      )}
 
-        <Reveal
-          stagger
-          className="mt-6 grid grid-cols-2 gap-x-4 gap-y-9 md:grid-cols-4 md:gap-x-6"
-        >
-          {newArrivals.map((p, i) => (
-            <div key={p.id}>
-              <ProductCard product={p} priority={i < 2} />
+      {/* Stats Counter Section */}
+      <section className="bg-ink text-paper py-20 mt-12 mb-24">
+        <div className="container-x">
+          <Reveal stagger className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="text-4xl md:text-6xl font-bold mb-2">
+                <AnimatedCounter value={50} suffix="k+" />
+              </div>
+              <span className="text-white/70 text-sm tracking-widest uppercase">Happy Customers</span>
             </div>
-          ))}
-        </Reveal>
+            <div className="flex flex-col items-center">
+              <div className="text-4xl md:text-6xl font-bold mb-2">
+                <AnimatedCounter value={98} suffix="%" />
+              </div>
+              <span className="text-white/70 text-sm tracking-widest uppercase">Positive Reviews</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="text-4xl md:text-6xl font-bold mb-2">
+                <AnimatedCounter value={24} suffix="h" />
+              </div>
+              <span className="text-white/70 text-sm tracking-widest uppercase">Fast Dispatch</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="text-4xl md:text-6xl font-bold mb-2">
+                <AnimatedCounter value={100} suffix="%" />
+              </div>
+              <span className="text-white/70 text-sm tracking-widest uppercase">Quality Guarantee</span>
+            </div>
+          </Reveal>
+        </div>
       </section>
+
+      {/* Bestsellers Carousel */}
+      {bestSellers.length > 0 && (
+        <section className="container-x mb-24">
+          <Reveal>
+            <ProductCarousel 
+              products={bestSellers} 
+              title="Best Sellers" 
+              viewAllLink="/shop"
+            />
+          </Reveal>
+        </section>
+      )}
 
       {/* Redesigned Shop by Category Section */}
-      <section className="container-x mt-20">
+      <section className="container-x mt-20 mb-24">
         <Reveal>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
@@ -104,13 +177,13 @@ export default function HomePage() {
               alt="Shop Men"
               fill
               sizes="(max-width: 768px) 100vw, 66vw"
-              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 opacity-80"
+              className="object-cover transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 opacity-80"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-6 md:p-10 text-paper flex flex-col justify-end">
+            <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent transition-opacity duration-500 group-hover:opacity-80" />
+            <div className="absolute inset-x-0 bottom-0 p-8 md:p-12 text-paper flex flex-col justify-end">
               <span className="eyebrow text-white/70 mb-2">Built for the commute</span>
               <h3 className="display text-3xl md:text-5xl mb-2">Men's Collection</h3>
-              <p className="text-white/80 text-[15px] max-w-sm mb-6 hidden md:block">
+              <p className="text-white/80 text-[15px] max-w-sm mb-8 hidden md:block">
                 Grip, cushioning and a sole that survives Colombo pavements. Discover our flagship running and lifestyle shoes.
               </p>
               <span className="btn bg-paper text-ink group-hover:bg-mist-2 self-start transition-colors">
@@ -129,13 +202,13 @@ export default function HomePage() {
               alt="Shop Women"
               fill
               sizes="(max-width: 768px) 100vw, 33vw"
-              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+              className="object-cover transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink/80 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-6 text-paper flex flex-col justify-end">
+            <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/20 to-transparent transition-opacity duration-500 group-hover:opacity-90" />
+            <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 text-paper flex flex-col justify-end">
               <h3 className="display text-2xl md:text-3xl mb-1">Women's</h3>
-              <p className="text-white/80 text-sm mb-4">Court, casual and slides</p>
-              <span className="btn btn-outline text-paper border-white/30 group-hover:border-white group-hover:bg-white group-hover:text-ink self-start transition-all px-4 py-2 text-sm">
+              <p className="text-white/80 text-sm mb-6">Court, casual and slides</p>
+              <span className="btn btn-outline text-paper border-white/30 group-hover:border-white group-hover:bg-white group-hover:text-ink self-start transition-all px-5 py-2.5 text-sm">
                 Shop Women
               </span>
             </div>
@@ -151,80 +224,53 @@ export default function HomePage() {
               alt="Shop Kids"
               fill
               sizes="(max-width: 768px) 100vw, 33vw"
-              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+              className="object-cover transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink/80 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-6 text-paper flex flex-col justify-end">
+            <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/20 to-transparent transition-opacity duration-500 group-hover:opacity-90" />
+            <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 text-paper flex flex-col justify-end">
               <h3 className="display text-2xl md:text-3xl mb-1">Kids'</h3>
-              <p className="text-white/80 text-sm mb-4">School-ready and play-proof</p>
-              <span className="btn btn-outline text-paper border-white/30 group-hover:border-white group-hover:bg-white group-hover:text-ink self-start transition-all px-4 py-2 text-sm">
+              <p className="text-white/80 text-sm mb-6">School-ready and play-proof</p>
+              <span className="btn btn-outline text-paper border-white/30 group-hover:border-white group-hover:bg-white group-hover:text-ink self-start transition-all px-5 py-2.5 text-sm">
                 Shop Kids
-              </span>
-            </div>
-          </Link>
-
-          {/* Special Offers / Sale Tile - Full width row at the bottom */}
-          <Link
-            href="/shop/sale"
-            className="group relative block overflow-hidden bg-ink md:col-span-12 rounded-2xl min-h-[200px]"
-          >
-            <Image
-              src="/images/p5.jpg"
-              alt="Special Offers"
-              fill
-              sizes="100vw"
-              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 opacity-50"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-ink/90 via-ink/60 to-transparent" />
-            <div className="absolute inset-0 p-6 md:p-10 text-paper flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <span className="inline-block bg-[#E05252] text-white text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wider">
-                  Special Offers
-                </span>
-                <h3 className="display text-3xl md:text-4xl mb-2">Final sizes, reduced prices</h3>
-                <p className="text-white/80 text-[15px] max-w-md">
-                  Grab your favorite styles before they are gone. Up to 40% off on selected items.
-                </p>
-              </div>
-              <span className="btn bg-paper text-ink group-hover:bg-mist-2 shrink-0 transition-colors">
-                Shop Sale
               </span>
             </div>
           </Link>
         </Reveal>
       </section>
 
-      {/* Sale rail */}
-      {onSale.length > 0 && (
-        <section className="container-x mt-20">
-          <Reveal className="flex items-end justify-between gap-4">
-            <h2 className="display text-[clamp(1.75rem,5vw,3rem)]">On Sale</h2>
-            <Link href="/shop/sale" className="link-underline shrink-0 text-[15px]">
-              All sale
-            </Link>
-          </Reveal>
-          <Reveal stagger className="mt-6 grid grid-cols-2 gap-x-4 gap-y-9 md:grid-cols-4 md:gap-x-6">
-            {onSale.map((p) => (
-              <div key={p.id}>
-                <ProductCard product={p} />
-              </div>
-            ))}
-          </Reveal>
-        </section>
-      )}
+      {/* Promotional Banner */}
+      <section className="mb-24 px-4 md:px-0">
+        <Reveal className="max-w-[1400px] mx-auto">
+          <PromoBanner 
+            image="/images/p5.jpg"
+            badge="Flash Sale"
+            title="End of Season Clearance"
+            description="Up to 50% off selected lines. Final sizes remaining, grab your favorite styles before they are gone forever."
+            ctaText="Shop Sale Items"
+            ctaLink="/shop/sale"
+            align="right"
+            countdownTo={endOfMonth.toISOString()}
+          />
+        </Reveal>
+      </section>
 
       {/* Social proof */}
-      <section className="container-x mt-20">
+      <section className="container-x mt-20 mb-24">
         <Reveal>
-          <h2 className="display text-[clamp(1.75rem,5vw,3rem)]">What customers say</h2>
+          <div className="flex flex-col items-center text-center max-w-2xl mx-auto mb-10">
+            <p className="eyebrow text-muted mb-2">Verified Reviews</p>
+            <h2 className="display text-[clamp(1.75rem,5vw,3rem)]">Loved by Sri Lanka</h2>
+            <p className="text-muted mt-4 text-[15px]">Don't just take our word for it. Here is what our customers have to say about the New Step experience.</p>
+          </div>
         </Reveal>
-        <Reveal stagger className="mt-6 grid gap-4 md:grid-cols-3">
+        <Reveal stagger className="grid gap-6 md:grid-cols-3">
           {REVIEWS.map((r) => (
-            <blockquote key={r.name} className="border border-line p-6">
-              <div className="text-sm">★★★★★</div>
-              <p className="mt-3 text-[15px] leading-relaxed">&ldquo;{r.text}&rdquo;</p>
-              <footer className="mt-4 text-sm text-muted">
-                {r.name} &middot; {r.where}
+            <blockquote key={r.name} className="relative bg-mist-2 rounded-2xl p-8 hover:shadow-md transition-shadow">
+              <div className="text-sm text-[#F59E0B] tracking-widest mb-4">★★★★★</div>
+              <p className="text-[15px] leading-relaxed text-ink/80">&ldquo;{r.text}&rdquo;</p>
+              <footer className="mt-6 flex items-center justify-between border-t border-line/50 pt-4">
+                <span className="font-semibold text-[15px]">{r.name}</span>
+                <span className="text-xs text-muted font-medium bg-line/20 px-2.5 py-1 rounded-full">{r.where}</span>
               </footer>
             </blockquote>
           ))}

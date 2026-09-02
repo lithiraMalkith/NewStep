@@ -126,3 +126,42 @@ export const orderStatusSchema = z.object({
 })
 
 export type OrderStatusFormData = z.infer<typeof orderStatusSchema>
+
+// ─── Reviews ───
+
+export const reviewSchema = z.object({
+  productId: z.string().min(1, 'Product is required'),
+  rating: z.number().int().min(1, 'Rating must be at least 1').max(5, 'Rating cannot exceed 5'),
+  title: z.string().max(100).optional().or(z.literal('')),
+  comment: z.string().min(10, 'Review must be at least 10 characters').max(1000),
+})
+
+export type ReviewFormData = z.infer<typeof reviewSchema>
+
+export const reviewModerationSchema = z.object({
+  status: z.enum(['approved', 'pending', 'rejected']),
+})
+
+export type ReviewModerationFormData = z.infer<typeof reviewModerationSchema>
+
+// ─── Discounts ───
+
+export const discountSchema = z.object({
+  code: z.string().min(3, 'Code must be at least 3 characters').max(30).transform(v => v.toUpperCase()),
+  description: z.string().min(5, 'Description is required').max(200),
+  type: z.enum(['percentage', 'fixed']),
+  value: z.number().positive('Value must be positive'),
+  minOrderAmount: z.number().min(0).optional(),
+  maxUses: z.number().int().min(1).optional(),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().min(1, 'End date is required'),
+  applicableCategories: z.array(z.string()).optional().default([]),
+})
+
+export type DiscountFormData = z.infer<typeof discountSchema>
+
+export const discountValidateSchema = z.object({
+  code: z.string().min(1, 'Discount code is required'),
+  orderTotal: z.number().positive(),
+  categories: z.array(z.string()).optional().default([]),
+})

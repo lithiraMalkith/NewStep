@@ -177,6 +177,69 @@ export interface Message {
   updatedAt: Date
 }
 
+// ─── Reviews ───
+
+export type ReviewStatus = 'approved' | 'pending' | 'rejected'
+
+export interface Review {
+  id: string
+  productId: string
+  productName: string
+  productSlug: string
+  customerId: string
+  customerName: string
+  customerEmail: string
+  rating: number
+  title?: string
+  comment: string
+  status: ReviewStatus
+  isVerifiedPurchase: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface ReviewStats {
+  averageRating: number
+  totalReviews: number
+  ratingDistribution: Record<number, number>
+}
+
+// ─── Discounts ───
+
+export type DiscountType = 'percentage' | 'fixed'
+export type DiscountStatus = 'active' | 'expired' | 'disabled'
+
+export interface Discount {
+  id: string
+  code: string
+  description: string
+  type: DiscountType
+  value: number
+  minOrderAmount?: number
+  maxUses?: number
+  usedCount: number
+  startDate: Date
+  endDate: Date
+  status: DiscountStatus
+  applicableCategories?: string[]
+  createdBy: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+// ─── Wishlist ───
+
+export interface WishlistItem {
+  id: string
+  userId: string
+  productId: string
+  productName: string
+  productSlug: string
+  productImage: string
+  productPrice: number
+  addedAt: Date
+}
+
 // ─── Dashboard ───
 
 export interface DashboardStats {
@@ -187,11 +250,14 @@ export interface DashboardStats {
   revenueThisWeek: number
   revenueThisMonth: number
   pendingOrders: number
+  completedOrders: number
   lowStockProducts: number
   totalProducts: number
   totalCustomers: number
   revenueData: { day: string; revenue: number }[]
   ordersData: { day: string; orders: number; completed: number }[]
+  categoryRevenue: { category: string; revenue: number }[]
+  topProducts: { name: string; sold: number; revenue: number }[]
   recentActivities: { id: string; type: 'order' | 'product' | 'user'; message: string; time: string }[]
   revenueTrend: number
   ordersTrend: number

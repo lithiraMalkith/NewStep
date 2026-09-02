@@ -9,7 +9,7 @@ export type Product = {
   slug: string;
   name: string;
   brand: string;
-  category: "mens" | "womens" | "kids" | "sale";
+  category: string;
   categoryLabel: string;
   subtitle: string;
   colour: string;
@@ -21,6 +21,7 @@ export type Product = {
   details: string[];
   variants: Variant[];
   isNew?: boolean;
+  isBestseller?: boolean;
   rating: number;
   reviewCount: number;
 };
@@ -56,3 +57,4 @@ export type Order = {
   paymentMethod: "COD";
   status: "Pending";
 };
+

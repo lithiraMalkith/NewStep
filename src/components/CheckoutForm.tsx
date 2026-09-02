@@ -33,6 +33,10 @@ export default function CheckoutForm() {
   });
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [discountCode, setDiscountCode] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState<{code: string, amount: number} | null>(null);
+  const [discountError, setDiscountError] = useState("");
+  const [applying, setApplying] = useState(false);
 
   // Pre-fill from default address & auth user
   useEffect(() => {
@@ -58,7 +62,35 @@ export default function CheckoutForm() {
   }, [user]);
 
   const delivery = deliveryFor(form.district, subtotal);
-  const total = subtotal + delivery;
+  const total = Math.max(0, subtotal - (appliedDiscount?.amount || 0)) + delivery;
+
+  const applyDiscount = async () => {
+    if (!discountCode.trim()) return;
+    setApplying(true);
+    setDiscountError("");
+    try {
+      const res = await fetch("/api/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: discountCode,
+          orderTotal: subtotal,
+          categories: [],
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data.valid) {
+        setAppliedDiscount({ code: discountCode, amount: data.data.discountAmount });
+        setDiscountCode("");
+      } else {
+        setDiscountError(data.data?.error || data.error || "Invalid discount code");
+      }
+    } catch (err) {
+      setDiscountError("Error validating discount code");
+    } finally {
+      setApplying(false);
+    }
+  };
 
   const set = (k: string, v: string) => {
     setForm((f) => ({ ...f, [k]: v }));
@@ -98,6 +130,8 @@ export default function CheckoutForm() {
       city: form.city.trim(),
       district: form.district,
       notes: form.notes.trim() || undefined,
+      discountCode: appliedDiscount?.code,
+      discountAmount: appliedDiscount?.amount,
       items: lines.map((l) => ({
         productId: l.productId,
         slug: l.slug,
@@ -129,6 +163,8 @@ export default function CheckoutForm() {
           lines,
           subtotal,
           delivery,
+          discountAmount: appliedDiscount?.amount,
+          discountCode: appliedDiscount?.code,
           total: data.data.total ?? total,
           paymentMethod: "COD",
           status: "Pending",
@@ -143,6 +179,8 @@ export default function CheckoutForm() {
           lines,
           subtotal,
           delivery,
+          discountAmount: appliedDiscount?.amount,
+          discountCode: appliedDiscount?.code,
           total,
           paymentMethod: "COD",
           status: "Pending",
@@ -157,6 +195,8 @@ export default function CheckoutForm() {
         lines,
         subtotal,
         delivery,
+        discountAmount: appliedDiscount?.amount,
+        discountCode: appliedDiscount?.code,
         total,
         paymentMethod: "COD",
         status: "Pending",
@@ -308,11 +348,40 @@ export default function CheckoutForm() {
             ))}
           </ul>
 
-          <dl className="mt-4 space-y-2 text-[15px]">
+          <div className="mt-6 flex flex-col gap-2">
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                placeholder="Discount code" 
+                value={discountCode}
+                onChange={e => setDiscountCode(e.target.value.toUpperCase())}
+                disabled={applying || !!appliedDiscount}
+                className="flex-1 border border-line px-3 py-2 text-sm outline-none focus:border-ink disabled:bg-mist"
+              />
+              {appliedDiscount ? (
+                <button type="button" onClick={() => setAppliedDiscount(null)} className="btn btn-outline px-4 py-2 text-sm">
+                  Remove
+                </button>
+              ) : (
+                <button type="button" onClick={applyDiscount} disabled={applying || !discountCode} className="btn btn-solid px-4 py-2 text-sm">
+                  {applying ? "..." : "Apply"}
+                </button>
+              )}
+            </div>
+            {discountError && <span className="text-sm text-sale">{discountError}</span>}
+          </div>
+
+          <dl className="mt-6 space-y-2 text-[15px]">
             <div className="flex justify-between">
               <dt>Subtotal</dt>
               <dd>{LKR(subtotal)}</dd>
             </div>
+            {appliedDiscount && (
+              <div className="flex justify-between text-[#4CAF7D]">
+                <dt>Discount ({appliedDiscount.code})</dt>
+                <dd>-{LKR(appliedDiscount.amount)}</dd>
+              </div>
+            )}
             <div className="flex justify-between">
               <dt>Delivery{form.district ? ` — ${form.district}` : ""}</dt>
               <dd>{form.district ? (delivery === 0 ? "Free" : LKR(delivery)) : "—"}</dd>
