@@ -32,8 +32,6 @@ export const products: Product[] = [
     variants: sizes(RUN),
     isNew: true,
     isBestseller: true,
-    rating: 4.8,
-    reviewCount: 128,
   },
   {
     id: "p-002",
@@ -50,8 +48,6 @@ export const products: Product[] = [
     description: "Statement volume, zero noise. Pairs a stacked sculpted sole with an all-black upper.",
     details: ["Layered leather and mesh upper", "Stacked 4cm sculpted midsole"],
     variants: sizes(RUN_B),
-    rating: 4.5,
-    reviewCount: 76,
   },
   {
     id: "p-003",
@@ -69,8 +65,6 @@ export const products: Product[] = [
     details: ["Full-grain leather upper", "Cap-toe Oxford construction"],
     variants: sizes(RUN),
     isBestseller: true,
-    rating: 4.9,
-    reviewCount: 201,
   },
   {
     id: "p-010",
@@ -88,8 +82,6 @@ export const products: Product[] = [
     details: ["Gore-tex coating", "Aggressive lug pattern"],
     variants: sizes(RUN_LOW),
     isNew: true,
-    rating: 4.6,
-    reviewCount: 32,
   },
   {
     id: "p-011",
@@ -106,8 +98,6 @@ export const products: Product[] = [
     description: "Easy slip-on design for a relaxed weekend look.",
     details: ["Canvas upper", "Elastic side panels"],
     variants: sizes(RUN_B),
-    rating: 4.2,
-    reviewCount: 45,
   },
   {
     id: "p-012",
@@ -126,8 +116,6 @@ export const products: Product[] = [
     details: ["TPU heel clip", "Breathable mesh"],
     variants: sizes(RUN),
     isBestseller: true,
-    rating: 4.8,
-    reviewCount: 150,
   },
   {
     id: "p-013",
@@ -144,8 +132,6 @@ export const products: Product[] = [
     description: "Timeless white leather sneaker.",
     details: ["Premium leather upper", "Rubber cupsole"],
     variants: sizes(RUN),
-    rating: 4.7,
-    reviewCount: 305,
   },
 
   // WOMENS
@@ -166,8 +152,6 @@ export const products: Product[] = [
     variants: sizes(RUN_W),
     isNew: true,
     isBestseller: true,
-    rating: 4.8,
-    reviewCount: 93,
   },
   {
     id: "p-005",
@@ -185,8 +169,6 @@ export const products: Product[] = [
     description: "One-piece moulded EVA that shrugs off monsoon rain.",
     details: ["One-piece moulded EVA", "Water-friendly, quick drying"],
     variants: sizes(RUN_B),
-    rating: 4.3,
-    reviewCount: 211,
   },
   {
     id: "p-014",
@@ -204,8 +186,6 @@ export const products: Product[] = [
     details: ["Flyknit upper", "Zoom foam"],
     variants: sizes(RUN_W),
     isNew: true,
-    rating: 4.9,
-    reviewCount: 88,
   },
   {
     id: "p-015",
@@ -224,8 +204,6 @@ export const products: Product[] = [
     details: ["Organic canvas", "2-inch platform sole"],
     variants: sizes(RUN_W),
     isBestseller: true,
-    rating: 4.7,
-    reviewCount: 420,
   },
   {
     id: "p-016",
@@ -242,8 +220,6 @@ export const products: Product[] = [
     description: "Elegant strappy sandal for evening wear.",
     details: ["Metallic finish", "Adjustable ankle strap"],
     variants: sizes(RUN_LOW),
-    rating: 4.4,
-    reviewCount: 56,
   },
   {
     id: "p-017",
@@ -260,8 +236,6 @@ export const products: Product[] = [
     description: "Flexible sole for studio workouts.",
     details: ["Sock-like fit", "Lightweight"],
     variants: sizes(RUN_W),
-    rating: 4.8,
-    reviewCount: 110,
   },
   {
     id: "p-018",
@@ -278,8 +252,6 @@ export const products: Product[] = [
     description: "The Court Clean in an all-black finish.",
     details: ["Soft leather upper", "Cushioned footbed"],
     variants: sizes(RUN_W),
-    rating: 4.6,
-    reviewCount: 37,
   },
 
   // KIDS
@@ -299,8 +271,6 @@ export const products: Product[] = [
     details: ["Hook-and-loop strap", "Flexible non-marking outsole"],
     variants: sizes(RUN_K),
     isBestseller: true,
-    rating: 4.9,
-    reviewCount: 241,
   },
   {
     id: "p-019",
@@ -318,8 +288,6 @@ export const products: Product[] = [
     details: ["Reinforced toe cap", "Breathable mesh"],
     variants: sizes(RUN_K),
     isNew: true,
-    rating: 4.7,
-    reviewCount: 89,
   },
   {
     id: "p-020",
@@ -336,8 +304,6 @@ export const products: Product[] = [
     description: "Soft sole shoes for first steps.",
     details: ["Ultra soft leather", "Wide toe box"],
     variants: sizes(RUN_K),
-    rating: 4.9,
-    reviewCount: 320,
   },
   {
     id: "p-021",
@@ -356,8 +322,6 @@ export const products: Product[] = [
     details: ["Polishable leather", "Scuff resistant"],
     variants: sizes(RUN_K),
     isBestseller: true,
-    rating: 4.8,
-    reviewCount: 450,
   },
   {
     id: "p-022",
@@ -374,8 +338,6 @@ export const products: Product[] = [
     description: "100% waterproof for jumping in puddles.",
     details: ["Rubber construction", "Cotton lining"],
     variants: sizes(RUN_K),
-    rating: 4.6,
-    reviewCount: 65,
   }
 ];
 

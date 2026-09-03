@@ -2,12 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "./CartProvider";
 import { LKR } from "@/lib/format";
 import type { Product } from "@/lib/types";
 import ReviewSection from "./ReviewSection";
-import StarRating from "./StarRating";
+import ClientProductRating from "./ClientProductRating";
 
 const SIZE_GUIDE = [
   { eu: 39, uk: 6, cm: 24.5 },
@@ -51,7 +51,6 @@ export default function ProductDetail({ product }: { product: Product }) {
   const [size, setSize] = useState<number | null>(null);
   const [active, setActive] = useState(0);
   const [error, setError] = useState(false);
-
   const selected = product.variants.find((v) => v.size === size);
   const soldOut = product.variants.every((v) => v.stockQty === 0);
 
@@ -134,12 +133,7 @@ export default function ProductDetail({ product }: { product: Product }) {
           )}
         </div>
 
-        {!!product.reviewCount && product.reviewCount > 0 && (
-          <div className="mt-2 flex items-center gap-2 text-sm text-muted">
-            <StarRating rating={product.rating} size="sm" />
-            <span>{product.rating.toFixed(1)} · {product.reviewCount} reviews</span>
-          </div>
-        )}
+        <ClientProductRating productId={product.id} showText />
 
         {/* Size selector */}
         <div className="mt-8">

@@ -22,8 +22,8 @@ export type Product = {
   variants: Variant[];
   isNew?: boolean;
   isBestseller?: boolean;
-  rating: number;
-  reviewCount: number;
+  rating?: number;
+  reviewCount?: number;
 };
 
 export type CartLine = {
@@ -53,6 +53,8 @@ export type Order = {
   lines: CartLine[];
   subtotal: number;
   delivery: number;
+  discountAmount?: number;
+  discountCode?: string;
   total: number;
   paymentMethod: "COD";
   status: "Pending";

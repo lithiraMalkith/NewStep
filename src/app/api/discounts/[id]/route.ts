@@ -3,10 +3,10 @@ import { adminDb } from '@/lib/firebase-admin'
 import { withAuth, AuthedRequest } from '@/lib/auth-middleware'
 import { discountSchema } from '@/lib/validations'
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(request, async (req: AuthedRequest) => {
     try {
-      const { id } = params
+      const { id } = await params
       const body = await req.json()
       const validated = discountSchema.parse(body)
 
@@ -37,10 +37,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }, 'discounts:write')
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withAuth(request, async (req: AuthedRequest) => {
     try {
-      const { id } = params
+      const { id } = await params
       await adminDb.collection('discounts').doc(id).delete()
 
       return NextResponse.json({ success: true, data: { id, message: 'Discount deleted' } })

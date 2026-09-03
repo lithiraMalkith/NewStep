@@ -3,8 +3,8 @@ import Link from "next/link";
 import type { Product } from "@/lib/types";
 import { LKR } from "@/lib/format";
 import { totalStock } from "@/lib/products";
-import StarRating from "./StarRating";
 import { ShoppingBag } from "lucide-react";
+import ClientProductRating from "./ClientProductRating";
 
 export default function ProductCard({
   product,
@@ -79,12 +79,7 @@ export default function ProductCard({
         <p className="text-sm text-muted">{product.colour}</p>
         
         {/* Rating */}
-        {!!product.reviewCount && product.reviewCount > 0 && (
-          <div className="mt-2 flex items-center gap-1.5">
-            <StarRating rating={product.rating || 0} size="sm" />
-            <span className="text-xs text-muted">({product.reviewCount})</span>
-          </div>
-        )}
+        <ClientProductRating productId={product.id} />
 
         <div className="mt-auto pt-2 flex items-center gap-2">
           {product.compareAtPrice && (

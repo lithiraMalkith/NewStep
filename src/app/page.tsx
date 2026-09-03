@@ -49,7 +49,7 @@ async function getProducts() {
         ...data,
         createdAt: data.createdAt?.toDate?.() || data.createdAt,
         updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
-      } as Product
+      } as unknown as Product
     })
   } catch (error) {
     console.error("Failed to fetch products for home page:", error)

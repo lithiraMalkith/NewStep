@@ -47,11 +47,6 @@ export default async function ProductPage({
     image: product.images,
     description: product.description,
     brand: { "@type": "Brand", name: product.brand },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: product.rating,
-      reviewCount: product.reviewCount,
-    },
     offers: {
       "@type": "Offer",
       priceCurrency: "LKR",
@@ -62,6 +57,14 @@ export default async function ProductPage({
           : "https://schema.org/OutOfStock",
     },
   };
+
+  if (product.rating && product.reviewCount) {
+    (jsonLd as any).aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: product.rating,
+      reviewCount: product.reviewCount,
+    };
+  }
 
   return (
     <>

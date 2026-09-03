@@ -130,7 +130,7 @@ export default function AdminReportsPage() {
               <YAxis stroke="#6B6B6B" style={{ fontSize: '12px' }} tickFormatter={v => `Rs.${v/1000}k`} />
               <Tooltip 
                 contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #3a3a3a', borderRadius: '8px' }}
-                formatter={(value: number) => [formatPrice(value), 'Revenue']}
+                formatter={(value: any) => [formatPrice(Number(value)), 'Revenue']}
               />
               <Area type="monotone" dataKey="revenue" stroke="#C9A84C" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
             </AreaChart>
@@ -157,7 +157,7 @@ export default function AdminReportsPage() {
                 </Pie>
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #3a3a3a', borderRadius: '8px' }}
-                  formatter={(value: number) => [value, 'Orders']}
+                  formatter={(value: any) => [value, 'Orders']}
                 />
                 <Legend verticalAlign="bottom" height={36} iconType="circle" />
               </PieChart>
