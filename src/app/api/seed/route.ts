@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
         variants: p.variants || [],
         visibility: 'published' as const,
         isNew: !!p.isNew,
+        isBestseller: !!p.isBestseller,
         rating: p.rating || 4.5,
         reviewCount: p.reviewCount || 10,
         availabilityStatus: getAvailabilityStatus(p.variants),

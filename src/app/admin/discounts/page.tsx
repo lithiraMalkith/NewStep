@@ -160,7 +160,7 @@ export default function AdminDiscountsPage() {
   if (loading) {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#C9A84C] animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#F7F4EE] animate-spin" />
       </div>
     )
   }
@@ -170,12 +170,12 @@ export default function AdminDiscountsPage() {
       {/* Header */}
       <div className="page-header flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-[#F0EDE8]">Discounts & Promotions</h1>
-          <p className="text-[#6B6B6B] text-sm mt-1">Manage coupon codes and promotional offers</p>
+          <h1 className="text-2xl font-semibold text-[#FAF8F5]">Discounts & Promotions</h1>
+          <p className="text-[#8A8478] text-sm mt-1">Manage coupon codes and promotional offers</p>
         </div>
         <button
           onClick={() => openModal()}
-          className="flex items-center gap-2 px-4 py-2 bg-[#C9A84C] text-[#0D0D0D] text-sm font-semibold rounded-lg hover:bg-[#E2C270] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-[#F7F4EE] text-[#0B0B0B] text-sm font-semibold rounded-lg hover:bg-[#FFFFFF] transition-all shadow-xs"
         >
           <Plus className="w-4 h-4" /> Create Discount
         </button>
@@ -183,29 +183,29 @@ export default function AdminDiscountsPage() {
 
       {/* Search */}
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B6B6B]" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8A8478]" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by code or description..."
-          className="w-full rounded-lg bg-[#161616] border border-[#2A2A2A] pl-10 pr-4 py-2 text-sm text-[#F0EDE8] placeholder:text-[#6B6B6B] outline-none focus:border-[#C9A84C]/50"
+          className="w-full rounded-lg bg-[#121212] border border-[#24221F] pl-10 pr-4 py-2 text-sm text-[#FAF8F5] placeholder:text-[#8A8478] outline-none focus:border-[#F7F4EE]"
         />
       </div>
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <div className="bg-[#161616] rounded-xl border border-[#2A2A2A] p-12 text-center">
-          <Tag className="w-10 h-10 text-[#6B6B6B] mx-auto" />
-          <p className="mt-3 text-sm text-[#F0EDE8]">No discounts found</p>
-          <p className="mt-1 text-xs text-[#6B6B6B]">Create a discount to start running promotions.</p>
+        <div className="bg-[#121212] rounded-xl border border-[#24221F] p-12 text-center">
+          <Tag className="w-10 h-10 text-[#8A8478] mx-auto" />
+          <p className="mt-3 text-sm text-[#FAF8F5]">No discounts found</p>
+          <p className="mt-1 text-xs text-[#8A8478]">Create a discount to start running promotions.</p>
         </div>
       ) : (
-        <div className="bg-[#161616] rounded-xl border border-[#2A2A2A] overflow-hidden">
+        <div className="bg-[#121212] rounded-xl border border-[#24221F] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#2A2A2A] text-[#6B6B6B]">
+                <tr className="border-b border-[#24221F] text-[#8A8478]">
                   <th className="text-left px-4 py-3 font-medium">Code</th>
                   <th className="text-left px-4 py-3 font-medium">Value</th>
                   <th className="text-left px-4 py-3 font-medium">Usage</th>
@@ -220,40 +220,40 @@ export default function AdminDiscountsPage() {
                   const now = new Date()
                   const isExpired = new Date(discount.endDate) < now
                   const status = isExpired ? 'Expired' : isActive ? 'Active' : 'Inactive'
-                  const statusColor = isExpired ? 'text-[#6B6B6B]' : isActive ? 'text-[#4CAF7D]' : 'text-[#E05252]'
+                  const statusColor = isExpired ? 'text-[#8A8478]' : isActive ? 'text-[#FAF8F5]' : 'text-[#E05252]'
 
                   return (
-                    <tr key={discount.id} className="item-row border-b border-[#2A2A2A] last:border-0 hover:bg-[#1E1E1E] transition-colors">
+                    <tr key={discount.id} className="item-row border-b border-[#24221F]/50 last:border-0 hover:bg-[#181818] transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-[#C9A84C] tracking-wide">{discount.code}</span>
-                          <button onClick={() => copyCode(discount.code)} className="text-[#6B6B6B] hover:text-[#F0EDE8]">
-                            {copied === discount.code ? <Check className="w-3.5 h-3.5 text-[#4CAF7D]" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span className="font-semibold text-[#F7F4EE] tracking-wide font-mono">{discount.code}</span>
+                          <button onClick={() => copyCode(discount.code)} className="text-[#8A8478] hover:text-[#FAF8F5]">
+                            {copied === discount.code ? <Check className="w-3.5 h-3.5 text-[#FAF8F5]" /> : <Copy className="w-3.5 h-3.5" />}
                           </button>
                         </div>
-                        <p className="text-xs text-[#6B6B6B] truncate max-w-[200px] mt-0.5">{discount.description}</p>
+                        <p className="text-xs text-[#8A8478] truncate max-w-[200px] mt-0.5">{discount.description}</p>
                       </td>
-                      <td className="px-4 py-3 text-[#F0EDE8]">
+                      <td className="px-4 py-3 text-[#FAF8F5]">
                         {discount.type === 'percentage' ? `${discount.value}% OFF` : `${formatPrice(discount.value)} OFF`}
-                        {discount.minOrderAmount && <p className="text-xs text-[#6B6B6B] mt-0.5">Min: {formatPrice(discount.minOrderAmount)}</p>}
+                        {discount.minOrderAmount && <p className="text-xs text-[#8A8478] mt-0.5">Min: {formatPrice(discount.minOrderAmount)}</p>}
                       </td>
-                      <td className="px-4 py-3 text-[#F0EDE8]">
+                      <td className="px-4 py-3 text-[#FAF8F5]">
                         {discount.usedCount} {discount.maxUses ? `/ ${discount.maxUses}` : 'uses'}
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell text-xs text-[#6B6B6B]">
+                      <td className="px-4 py-3 hidden md:table-cell text-xs text-[#8A8478]">
                         {new Date(discount.startDate).toLocaleDateString()} - {new Date(discount.endDate).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-current ${statusColor} bg-current/10`}>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-current ${statusColor} bg-white/5`}>
                           {status}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => openModal(discount)} className="p-1.5 rounded-lg text-[#6B6B6B] hover:text-[#C9A84C] hover:bg-[#C9A84C]/10 transition-colors">
+                          <button onClick={() => openModal(discount)} className="p-1.5 rounded-lg text-[#8A8478] hover:text-[#F7F4EE] hover:bg-[#F7F4EE]/10 transition-colors">
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button onClick={() => setDeleteId(discount.id)} className="p-1.5 rounded-lg text-[#6B6B6B] hover:text-[#E05252] hover:bg-[#E05252]/10 transition-colors">
+                          <button onClick={() => setDeleteId(discount.id)} className="p-1.5 rounded-lg text-[#8A8478] hover:text-[#E05252] hover:bg-[#E05252]/10 transition-colors">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -271,10 +271,10 @@ export default function AdminDiscountsPage() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div onClick={() => !saving && setIsModalOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="relative bg-[#161616] rounded-xl border border-[#2A2A2A] w-full max-w-lg shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-[#2A2A2A]">
-              <h3 className="text-lg font-semibold text-[#F0EDE8]">{editingDiscount ? 'Edit Discount' : 'Create Discount'}</h3>
-              <button onClick={() => !saving && setIsModalOpen(false)} className="text-[#6B6B6B] hover:text-[#F0EDE8]">
+          <div className="relative bg-[#141414] rounded-xl border border-[#24221F] w-full max-w-lg shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-[#24221F]">
+              <h3 className="text-lg font-semibold text-[#FAF8F5]">{editingDiscount ? 'Edit Discount' : 'Create Discount'}</h3>
+              <button onClick={() => !saving && setIsModalOpen(false)} className="text-[#8A8478] hover:text-[#FAF8F5]">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -282,12 +282,12 @@ export default function AdminDiscountsPage() {
             <form onSubmit={handleSave} className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-[#6B6B6B]">Discount Code *</label>
-                  <input required type="text" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm text-[#F0EDE8] outline-none focus:border-[#C9A84C]" placeholder="e.g. SUMMER20" />
+                  <label className="text-xs font-medium text-[#8A8478]">Discount Code *</label>
+                  <input required type="text" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="w-full bg-[#0B0B0B] border border-[#24221F] rounded-lg px-3 py-2 text-sm text-[#FAF8F5] outline-none focus:border-[#F7F4EE]" placeholder="e.g. SUMMER20" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-[#6B6B6B]">Discount Type</label>
-                  <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm text-[#F0EDE8] outline-none focus:border-[#C9A84C]">
+                  <label className="text-xs font-medium text-[#8A8478]">Discount Type</label>
+                  <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-[#0B0B0B] border border-[#24221F] rounded-lg px-3 py-2 text-sm text-[#FAF8F5] outline-none focus:border-[#F7F4EE]">
                     <option value="percentage">Percentage (%)</option>
                     <option value="fixed">Fixed Amount (Rs.)</option>
                   </select>
@@ -295,40 +295,40 @@ export default function AdminDiscountsPage() {
               </div>
               
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-[#6B6B6B]">Description *</label>
-                <input required type="text" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm text-[#F0EDE8] outline-none focus:border-[#C9A84C]" placeholder="e.g. 20% off all orders over 10000" />
+                <label className="text-xs font-medium text-[#8A8478]">Description *</label>
+                <input required type="text" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#0B0B0B] border border-[#24221F] rounded-lg px-3 py-2 text-sm text-[#FAF8F5] outline-none focus:border-[#F7F4EE]" placeholder="e.g. 20% off all orders over 10000" />
               </div>
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-[#6B6B6B]">Value *</label>
-                  <input required type="number" min="1" value={formData.value} onChange={e => setFormData({...formData, value: Number(e.target.value)})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm text-[#F0EDE8] outline-none focus:border-[#C9A84C]" />
+                  <label className="text-xs font-medium text-[#8A8478]">Value *</label>
+                  <input required type="number" min="1" value={formData.value} onChange={e => setFormData({...formData, value: Number(e.target.value)})} className="w-full bg-[#0B0B0B] border border-[#24221F] rounded-lg px-3 py-2 text-sm text-[#FAF8F5] outline-none focus:border-[#F7F4EE]" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-[#6B6B6B]">Min Order (Opt)</label>
-                  <input type="number" min="0" value={formData.minOrderAmount} onChange={e => setFormData({...formData, minOrderAmount: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm text-[#F0EDE8] outline-none focus:border-[#C9A84C]" placeholder="None" />
+                  <label className="text-xs font-medium text-[#8A8478]">Min Order (Opt)</label>
+                  <input type="number" min="0" value={formData.minOrderAmount} onChange={e => setFormData({...formData, minOrderAmount: e.target.value})} className="w-full bg-[#0B0B0B] border border-[#24221F] rounded-lg px-3 py-2 text-sm text-[#FAF8F5] outline-none focus:border-[#F7F4EE]" placeholder="None" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-[#6B6B6B]">Max Uses (Opt)</label>
-                  <input type="number" min="1" value={formData.maxUses} onChange={e => setFormData({...formData, maxUses: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm text-[#F0EDE8] outline-none focus:border-[#C9A84C]" placeholder="Unlimited" />
+                  <label className="text-xs font-medium text-[#8A8478]">Max Uses (Opt)</label>
+                  <input type="number" min="1" value={formData.maxUses} onChange={e => setFormData({...formData, maxUses: e.target.value})} className="w-full bg-[#0B0B0B] border border-[#24221F] rounded-lg px-3 py-2 text-sm text-[#FAF8F5] outline-none focus:border-[#F7F4EE]" placeholder="Unlimited" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-[#6B6B6B]">Start Date *</label>
-                  <input required type="datetime-local" value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm text-[#F0EDE8] outline-none focus:border-[#C9A84C] [color-scheme:dark]" />
+                  <label className="text-xs font-medium text-[#8A8478]">Start Date *</label>
+                  <input required type="datetime-local" value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} className="w-full bg-[#0B0B0B] border border-[#24221F] rounded-lg px-3 py-2 text-sm text-[#FAF8F5] outline-none focus:border-[#F7F4EE] [color-scheme:dark]" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-[#6B6B6B]">End Date *</label>
-                  <input required type="datetime-local" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm text-[#F0EDE8] outline-none focus:border-[#C9A84C] [color-scheme:dark]" />
+                  <label className="text-xs font-medium text-[#8A8478]">End Date *</label>
+                  <input required type="datetime-local" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} className="w-full bg-[#0B0B0B] border border-[#24221F] rounded-lg px-3 py-2 text-sm text-[#FAF8F5] outline-none focus:border-[#F7F4EE] [color-scheme:dark]" />
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-[#2A2A2A] mt-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} disabled={saving} className="px-4 py-2 text-sm rounded-lg border border-[#2A2A2A] text-[#F0EDE8] hover:bg-[#1E1E1E]">Cancel</button>
-                <button type="submit" disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-[#C9A84C] text-[#0D0D0D] font-semibold text-sm rounded-lg hover:bg-[#E2C270] disabled:opacity-50">
-                  {saving && <Loader2 className="w-4 h-4 animate-spin" />} Save Discount
+              <div className="pt-4 flex justify-end gap-3 border-t border-[#24221F] mt-2">
+                <button type="button" onClick={() => setIsModalOpen(false)} disabled={saving} className="px-4 py-2 text-sm rounded-lg border border-[#24221F] text-[#FAF8F5] hover:bg-[#1C1C1C]">Cancel</button>
+                <button type="submit" disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-[#F7F4EE] text-[#0B0B0B] font-semibold text-sm rounded-lg hover:bg-[#FFFFFF] disabled:opacity-50 transition-all shadow-xs">
+                  {saving && <Loader2 className="w-4 h-4 animate-spin text-[#0B0B0B]" />} Save Discount
                 </button>
               </div>
             </form>
@@ -340,11 +340,11 @@ export default function AdminDiscountsPage() {
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div onClick={() => setDeleteId(null)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="relative bg-[#161616] rounded-xl border border-[#2A2A2A] p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="text-lg font-semibold text-[#F0EDE8]">Delete Discount</h3>
-            <p className="mt-2 text-sm text-[#6B6B6B]">Are you sure you want to delete this discount? It cannot be undone.</p>
+          <div className="relative bg-[#141414] rounded-xl border border-[#24221F] p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-lg font-semibold text-[#FAF8F5]">Delete Discount</h3>
+            <p className="mt-2 text-sm text-[#8A8478]">Are you sure you want to delete this discount? It cannot be undone.</p>
             <div className="mt-5 flex justify-end gap-3">
-              <button onClick={() => setDeleteId(null)} className="px-4 py-2 rounded-lg text-sm border border-[#2A2A2A] text-[#F0EDE8] hover:bg-[#1E1E1E]">Cancel</button>
+              <button onClick={() => setDeleteId(null)} className="px-4 py-2 rounded-lg text-sm border border-[#24221F] text-[#FAF8F5] hover:bg-[#1C1C1C]">Cancel</button>
               <button onClick={handleDelete} className="px-4 py-2 rounded-lg text-sm bg-[#E05252] text-white hover:bg-[#C84040]">Delete</button>
             </div>
           </div>

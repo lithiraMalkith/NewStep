@@ -101,7 +101,7 @@ export default function PromoBanner({
       )}>
         <div className={cn("flex flex-col max-w-xl", alignmentClasses[align])}>
           {badge && (
-            <span className="inline-block bg-[#C9A84C] text-ink text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wider">
+            <span className="inline-block bg-[#F7F4EE] text-ink border border-[#E5DDD0] text-xs font-bold px-3.5 py-1 rounded-full mb-4 uppercase tracking-wider shadow-xs">
               {badge}
             </span>
           )}
@@ -133,13 +133,13 @@ export default function PromoBanner({
               </div>
               <span className="text-white/50 text-xl font-bold">:</span>
               <div className="flex flex-col items-center bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/20">
-                <span className="text-xl font-bold text-[#E05252] leading-none mb-1">{String(timeLeft.seconds).padStart(2, '0')}</span>
+                <span className="text-xl font-bold text-[#F7F4EE] leading-none mb-1">{String(timeLeft.seconds).padStart(2, '0')}</span>
                 <span className="text-[10px] uppercase text-white/70 tracking-wider">Secs</span>
               </div>
             </div>
           )}
 
-          <Link href={ctaLink} className="btn bg-paper text-ink hover:bg-mist-2">
+          <Link href={ctaLink} className="btn bg-[#F7F4EE] text-ink hover:bg-white border border-[#E5DDD0]">
             {ctaText}
           </Link>
         </div>

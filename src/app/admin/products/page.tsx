@@ -75,16 +75,16 @@ export default function ProductsPage() {
     return matchSearch && matchFilter
   })
 
-  if (loading) return <div className="min-h-[400px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#C9A84C] animate-spin" /></div>
+  if (loading) return <div className="min-h-[400px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#F7F4EE] animate-spin" /></div>
 
   return (
     <div ref={containerRef} className="space-y-6">
       <div className="page-header flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-[#F0EDE8]">Products</h1>
-          <p className="text-[#6B6B6B] text-sm mt-1">{items.length} total</p>
+          <h1 className="text-2xl font-semibold text-[#FAF8F5]">Products</h1>
+          <p className="text-[#8A8478] text-sm mt-1">{items.length} total products in catalog</p>
         </div>
-        <button onClick={() => router.push('/admin/products/new')} className="flex items-center gap-2 px-4 py-2 bg-[#C9A84C] text-[#0D0D0D] rounded-lg text-sm font-medium hover:bg-[#E2C270] transition-colors self-start">
+        <button onClick={() => router.push('/admin/products/new')} className="flex items-center gap-2 px-4 py-2 bg-[#F7F4EE] text-[#0B0B0B] rounded-lg text-sm font-semibold hover:bg-[#FFFFFF] transition-all shadow-xs self-start">
           <Plus className="w-4 h-4" /> Add Product
         </button>
       </div>
@@ -92,7 +92,7 @@ export default function ProductsPage() {
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={cn('px-4 py-1.5 rounded-full text-sm border transition-colors capitalize', filter === f ? 'bg-[#C9A84C]/10 border-[#C9A84C]/30 text-[#C9A84C]' : 'border-[#2A2A2A] text-[#6B6B6B] hover:text-[#F0EDE8] hover:border-[#3A3A3A]')}>
+          <button key={f} onClick={() => setFilter(f)} className={cn('px-4 py-1.5 rounded-full text-sm border transition-colors capitalize font-medium', filter === f ? 'bg-[#F7F4EE] border-[#F7F4EE] text-[#0B0B0B]' : 'border-[#24221F] text-[#8A8478] hover:text-[#FAF8F5] hover:border-[#3A352F] bg-[#121212]')}>
             {f === 'all' ? 'All' : f === 'mens' ? "Men's" : f === 'womens' ? "Women's" : f === 'kids' ? "Kids'" : 'Sale'}
           </button>
         ))}
@@ -100,61 +100,61 @@ export default function ProductsPage() {
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B6B6B]" />
-        <input type="text" placeholder="Search products..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-[#161616] border border-[#2A2A2A] rounded-lg pl-10 pr-4 py-2.5 text-sm text-[#F0EDE8] placeholder:text-[#6B6B6B]/50 outline-none focus:border-[#C9A84C] transition-colors" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8A8478]" />
+        <input type="text" placeholder="Search products..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-[#121212] border border-[#24221F] rounded-lg pl-10 pr-4 py-2.5 text-sm text-[#FAF8F5] placeholder:text-[#8A8478]/50 outline-none focus:border-[#F7F4EE] transition-colors" />
       </div>
 
       {/* Table */}
-      <div className="bg-[#161616] rounded-xl border border-[#2A2A2A] overflow-hidden">
+      <div className="bg-[#121212] rounded-xl border border-[#24221F] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#2A2A2A]">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B6B6B] uppercase tracking-wider">Product</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B6B6B] uppercase tracking-wider hidden md:table-cell">Category</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B6B6B] uppercase tracking-wider">Price</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B6B6B] uppercase tracking-wider hidden sm:table-cell">Stock</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B6B6B] uppercase tracking-wider hidden lg:table-cell">Status</th>
+              <tr className="border-b border-[#24221F]">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-[#8A8478] uppercase tracking-wider">Product</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-[#8A8478] uppercase tracking-wider hidden md:table-cell">Category</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-[#8A8478] uppercase tracking-wider">Price</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-[#8A8478] uppercase tracking-wider hidden sm:table-cell">Stock</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-[#8A8478] uppercase tracking-wider hidden lg:table-cell">Status</th>
                 <th className="w-12 px-4 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2A2A2A]/50">
+            <tbody className="divide-y divide-[#24221F]/50">
               {filtered.map((p) => {
                 const stock = totalStock(p.variants || [])
                 return (
-                  <tr key={p.id} className="item-row hover:bg-[#1A1A1A] transition-colors">
+                  <tr key={p.id} className="item-row hover:bg-[#181818] transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-[#2A2A2A] overflow-hidden shrink-0 relative">
-                          {p.images?.[0] ? <Image src={p.images[0]} alt="" fill sizes="40px" className="object-cover" /> : <Package className="w-5 h-5 text-[#6B6B6B] absolute inset-0 m-auto" />}
+                        <div className="w-10 h-10 rounded-lg bg-[#1C1C1C] border border-[#24221F] overflow-hidden shrink-0 relative">
+                          {p.images?.[0] ? <Image src={p.images[0]} alt="" fill sizes="40px" className="object-cover" /> : <Package className="w-5 h-5 text-[#8A8478] absolute inset-0 m-auto" />}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-[#F0EDE8] truncate">{p.name}</p>
-                          <p className="text-xs text-[#6B6B6B] truncate">{p.slug}</p>
+                          <p className="font-medium text-[#FAF8F5] truncate">{p.name}</p>
+                          <p className="text-xs text-[#8A8478] truncate">{p.slug}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-[#6B6B6B] capitalize hidden md:table-cell">{p.categoryLabel || p.category}</td>
-                    <td className="px-4 py-3 text-[#F0EDE8] font-medium">{formatPrice(p.price)}</td>
+                    <td className="px-4 py-3 text-[#8A8478] capitalize hidden md:table-cell">{p.categoryLabel || p.category}</td>
+                    <td className="px-4 py-3 text-[#FAF8F5] font-medium">{formatPrice(p.price)}</td>
                     <td className="px-4 py-3 hidden sm:table-cell">
-                      <span className={cn('text-sm', stock === 0 ? 'text-[#E05252]' : stock <= 5 ? 'text-[#E8B86D]' : 'text-[#4CAF7D]')}>
+                      <span className={cn('text-sm font-medium', stock === 0 ? 'text-[#E05252]' : stock <= 5 ? 'text-[#D4CBBF]' : 'text-[#FAF8F5]')}>
                         {stock} units
                       </span>
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
-                      <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', p.visibility === 'published' ? 'bg-[#4CAF7D]/10 text-[#4CAF7D]' : 'bg-[#6B6B6B]/10 text-[#6B6B6B]')}>
+                      <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', p.visibility === 'published' ? 'bg-[#FAF8F5]/15 text-[#FAF8F5] border border-[#FAF8F5]/30' : 'bg-[#8A8478]/15 text-[#8A8478]')}>
                         {p.visibility || 'draft'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="relative">
-                        <button onClick={() => setActiveMenu(activeMenu === p.id ? null : p.id)} className="p-1.5 rounded-lg text-[#6B6B6B] hover:text-[#F0EDE8] hover:bg-[#1E1E1E] transition-colors">
+                        <button onClick={() => setActiveMenu(activeMenu === p.id ? null : p.id)} className="p-1.5 rounded-lg text-[#8A8478] hover:text-[#FAF8F5] hover:bg-[#1C1C1C] transition-colors">
                           <MoreVertical className="w-4 h-4" />
                         </button>
                         {activeMenu === p.id && (
-                          <div className="absolute right-0 top-full mt-1 w-40 bg-[#161616] border border-[#2A2A2A] rounded-lg shadow-xl z-10 py-1">
-                            <button onClick={() => { setActiveMenu(null); router.push(`/admin/products/${p.id}`) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[#F0EDE8] hover:bg-[#1E1E1E]"><Eye className="w-3.5 h-3.5" /> View</button>
-                            <button onClick={() => { setActiveMenu(null); router.push(`/admin/products/${p.id}/edit`) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[#F0EDE8] hover:bg-[#1E1E1E]"><Edit2 className="w-3.5 h-3.5" /> Edit</button>
+                          <div className="absolute right-0 top-full mt-1 w-40 bg-[#141414] border border-[#24221F] rounded-lg shadow-xl z-10 py-1">
+                            <button onClick={() => { setActiveMenu(null); router.push(`/admin/products/${p.id}`) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[#FAF8F5] hover:bg-[#1C1C1C]"><Eye className="w-3.5 h-3.5" /> View</button>
+                            <button onClick={() => { setActiveMenu(null); router.push(`/admin/products/${p.id}/edit`) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[#FAF8F5] hover:bg-[#1C1C1C]"><Edit2 className="w-3.5 h-3.5" /> Edit</button>
                             <button onClick={() => { setActiveMenu(null); setDeleteConfirmId(p.id) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[#E05252] hover:bg-[#E05252]/10"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
                           </div>
                         )}
@@ -164,7 +164,7 @@ export default function ProductsPage() {
                 )
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-12 text-[#6B6B6B] text-sm">No products found</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 text-[#8A8478] text-sm">No products found</td></tr>
               )}
             </tbody>
           </table>
@@ -174,11 +174,11 @@ export default function ProductsPage() {
       {/* Delete Modal */}
       {deleteConfirmId && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-[#161616] border border-[#2A2A2A] rounded-xl p-6 w-full max-w-sm mx-4">
-            <h2 className="text-lg font-semibold text-[#F0EDE8] mb-2">Delete Product?</h2>
-            <p className="text-[#6B6B6B] text-sm mb-6">This action cannot be undone.</p>
+          <div className="bg-[#141414] border border-[#24221F] rounded-xl p-6 w-full max-w-sm mx-4">
+            <h2 className="text-lg font-semibold text-[#FAF8F5] mb-2">Delete Product?</h2>
+            <p className="text-[#8A8478] text-sm mb-6">This action cannot be undone.</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirmId(null)} disabled={isDeleting} className="flex-1 px-4 py-2 border border-[#2A2A2A] rounded-lg text-[#F0EDE8] hover:bg-[#1E1E1E] disabled:opacity-50">Cancel</button>
+              <button onClick={() => setDeleteConfirmId(null)} disabled={isDeleting} className="flex-1 px-4 py-2 border border-[#24221F] rounded-lg text-[#FAF8F5] hover:bg-[#1C1C1C] disabled:opacity-50">Cancel</button>
               <button onClick={handleDelete} disabled={isDeleting} className="flex-1 px-4 py-2 bg-[#E05252] text-white rounded-lg hover:bg-red-700 disabled:opacity-50">{isDeleting ? 'Deleting...' : 'Delete'}</button>
             </div>
           </div>

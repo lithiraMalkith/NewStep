@@ -15,18 +15,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'productId is required' }, { status: 400 })
     }
 
-    const snapshot = await adminDb
-      .collection('reviews')
-      .where('productId', '==', productId)
-      .where('status', '==', 'approved')
-      .get()
+    const [byPid, bySlug] = await Promise.all([
+      adminDb.collection('reviews').where('productId', '==', productId).where('status', '==', 'approved').get(),
+      adminDb.collection('reviews').where('productSlug', '==', productId).where('status', '==', 'approved').get(),
+    ])
 
-    const totalReviews = snapshot.size
+    const reviewMap = new Map<string, any>()
+    byPid.docs.forEach((d) => reviewMap.set(d.id, d.data()))
+    bySlug.docs.forEach((d) => reviewMap.set(d.id, d.data()))
+
+    const totalReviews = reviewMap.size
     let totalRating = 0
     const ratingDistribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
 
-    snapshot.docs.forEach((doc) => {
-      const rating = doc.data().rating || 0
+    reviewMap.forEach((data) => {
+      const rating = data.rating || 0
       totalRating += rating
       if (rating >= 1 && rating <= 5) {
         ratingDistribution[rating] = (ratingDistribution[rating] || 0) + 1

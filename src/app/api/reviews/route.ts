@@ -13,6 +13,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const productId = searchParams.get('productId')
     const status = searchParams.get('status')
+    const ratingParam = searchParams.get('rating')
+    const ratingFilter = ratingParam ? parseInt(ratingParam, 10) : null
     const isAdmin = searchParams.get('admin') === 'true'
 
     // Admin requests require auth
@@ -30,11 +32,14 @@ export async function GET(req: NextRequest) {
           updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString() || doc.data().updatedAt || new Date().toISOString(),
         }))
 
-        if (status) {
+        if (status && status !== 'all') {
           reviews = reviews.filter((r: any) => r.status === status)
         }
         if (productId) {
-          reviews = reviews.filter((r: any) => r.productId === productId)
+          reviews = reviews.filter((r: any) => r.productId === productId || r.productSlug === productId)
+        }
+        if (ratingFilter && !isNaN(ratingFilter)) {
+          reviews = reviews.filter((r: any) => r.rating === ratingFilter)
         }
 
         reviews.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -48,22 +53,34 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'productId is required' }, { status: 400 })
     }
 
-    const snapshot = await adminDb
-      .collection('reviews')
-      .where('productId', '==', productId)
-      .get()
+    // Match by productId or productSlug
+    const [byPid, bySlug] = await Promise.all([
+      adminDb.collection('reviews').where('productId', '==', productId).get(),
+      adminDb.collection('reviews').where('productSlug', '==', productId).get(),
+    ])
 
-    let reviews = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt || new Date().toISOString(),
-      updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString() || doc.data().updatedAt || new Date().toISOString(),
-    }))
+    const reviewMap = new Map<string, any>()
+    const addDoc = (doc: FirebaseFirestore.QueryDocumentSnapshot) => {
+      if (!reviewMap.has(doc.id)) {
+        reviewMap.set(doc.id, {
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt || new Date().toISOString(),
+          updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString() || doc.data().updatedAt || new Date().toISOString(),
+        })
+      }
+    }
+    byPid.docs.forEach(addDoc)
+    bySlug.docs.forEach(addDoc)
 
-    // Filter and sort in memory to avoid Firebase composite index requirements
-    reviews = reviews
+    let reviews = Array.from(reviewMap.values())
       .filter((r: any) => r.status === 'approved')
-      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+    if (ratingFilter && !isNaN(ratingFilter)) {
+      reviews = reviews.filter((r: any) => r.rating === ratingFilter)
+    }
+
+    reviews.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 50)
 
     return NextResponse.json({ success: true, data: reviews })
@@ -89,18 +106,48 @@ export async function POST(req: NextRequest) {
 
       const { productId, rating, title, comment } = parsed.data
       const userId = authedReq.user.uid
-      const userEmail = authedReq.user.email || ''
+      const userEmail = (authedReq.user.email || '').toLowerCase().trim()
       const userName = authedReq.user.name || authedReq.user.email?.split('@')[0] || 'Customer'
 
-      // Check for duplicate review from same user for same product
-      const existingReview = await adminDb
+      // Get product info for denormalization
+      let productName = ''
+      let productSlug = ''
+      let canonicalProductId = productId
+
+      try {
+        const productDoc = await adminDb.collection('products').doc(productId).get()
+        if (productDoc.exists) {
+          productName = productDoc.data()?.name || ''
+          productSlug = productDoc.data()?.slug || ''
+          canonicalProductId = productDoc.id
+        } else {
+          const bySlugSnap = await adminDb.collection('products').where('slug', '==', productId).limit(1).get()
+          if (!bySlugSnap.empty) {
+            productName = bySlugSnap.docs[0]!.data().name || ''
+            productSlug = bySlugSnap.docs[0]!.data().slug || ''
+            canonicalProductId = bySlugSnap.docs[0]!.id
+          }
+        }
+      } catch {
+        // Product info lookup best effort
+      }
+
+      // Check for duplicate review from same user for same product (by ID or slug)
+      const existingReviews = await adminDb
         .collection('reviews')
-        .where('productId', '==', productId)
         .where('customerId', '==', userId)
-        .limit(1)
         .get()
 
-      if (!existingReview.empty) {
+      const alreadyReviewed = existingReviews.docs.some((d) => {
+        const data = d.data()
+        return (
+          data.productId === canonicalProductId ||
+          data.productId === productId ||
+          (productSlug && (data.productSlug === productSlug || data.productId === productSlug))
+        )
+      })
+
+      if (alreadyReviewed) {
         return NextResponse.json(
           { success: false, error: 'You have already reviewed this product' },
           { status: 409 }
@@ -110,48 +157,54 @@ export async function POST(req: NextRequest) {
       // Check if user has purchased this product (verified purchase)
       let isVerifiedPurchase = false
       try {
-        const ordersSnapshot = await adminDb
-          .collection('orders')
-          .where('customer.email', '==', userEmail)
-          .where('status', 'in', ['delivered', 'dispatched', 'processing'])
-          .limit(50)
-          .get()
+        const orderSnapshots: FirebaseFirestore.DocumentData[] = []
+        if (userId) {
+          const snapUid = await adminDb
+            .collection('orders')
+            .where('customer.uid', '==', userId)
+            .limit(50)
+            .get()
+          snapUid.docs.forEach((doc) => orderSnapshots.push(doc.data()))
+        }
+        if (userEmail) {
+          const snapEmail = await adminDb
+            .collection('orders')
+            .where('customer.email', '==', userEmail)
+            .limit(50)
+            .get()
+          snapEmail.docs.forEach((doc) => orderSnapshots.push(doc.data()))
+        }
 
-        isVerifiedPurchase = ordersSnapshot.docs.some((orderDoc) => {
-          const orderData = orderDoc.data()
-          const items = orderData.items || []
-          return items.some((item: { productId?: string }) => item.productId === productId)
+        isVerifiedPurchase = orderSnapshots.some((orderData) => {
+          if (orderData.status === 'cancelled') return false
+          const items = orderData.items || orderData.lines || []
+          return items.some((item: { productId?: string; slug?: string; id?: string }) =>
+            item.productId === canonicalProductId ||
+            item.productId === productId ||
+            item.slug === productId ||
+            item.id === canonicalProductId ||
+            (productSlug && (item.productId === productSlug || item.slug === productSlug))
+          )
         })
       } catch {
-        // If order check fails, mark as unverified
+        // Order check best effort
       }
 
-      // Get product info for denormalization
-      let productName = ''
-      let productSlug = ''
-      try {
-        // Try by document ID first
-        const productDoc = await adminDb.collection('products').doc(productId).get()
-        if (productDoc.exists) {
-          productName = productDoc.data()?.name || ''
-          productSlug = productDoc.data()?.slug || ''
-        } else {
-          // Try by slug
-          const bySlug = await adminDb.collection('products').where('slug', '==', productId).limit(1).get()
-          if (!bySlug.empty) {
-            productName = bySlug.docs[0]!.data().name || ''
-            productSlug = bySlug.docs[0]!.data().slug || ''
-          }
-        }
-      } catch {
-        // Product info not critical
+      if (!isVerifiedPurchase) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Only customers who have purchased this product can leave a review.',
+          },
+          { status: 403 }
+        )
       }
 
       const now = new Date()
       const reviewData = {
-        productId,
-        productName,
-        productSlug,
+        productId: canonicalProductId,
+        productName: productName || 'Product',
+        productSlug: productSlug || productId,
         customerId: userId,
         customerName: userName,
         customerEmail: userEmail,
@@ -159,7 +212,7 @@ export async function POST(req: NextRequest) {
         title: title || '',
         comment,
         status: 'pending' as const, // Admin approval required
-        isVerifiedPurchase,
+        isVerifiedPurchase: true,
         createdAt: now,
         updatedAt: now,
       }

@@ -6,6 +6,11 @@
   --color-ink: #0a0a0a;
   --color-ink-soft: #111111;
   --color-paper: #ffffff;
+  --color-cream: #f7f4ee;
+  --color-cream-soft: #faf8f5;
+  --color-cream-deep: #ede5d8;
+  --color-cream-border: #e5ddd0;
+  --color-cream-dark: #c9baa2;
   --color-mist: #f5f5f5;
   --color-mist-2: #ebebeb;
   --color-line: #e2e2e2;
@@ -101,6 +106,16 @@ body {
   &:hover {
     background: var(--color-ink);
     color: var(--color-paper);
+  }
+}
+
+@utility btn-cream {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  border: 1px solid var(--color-cream-border);
+  &:hover {
+    background: #ffffff;
+    border-color: var(--color-ink);
   }
 }
 

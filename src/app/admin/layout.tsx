@@ -25,6 +25,8 @@ import {
   Loader2,
   Star,
   BarChart3,
+  Tag,
+  ExternalLink,
 } from 'lucide-react'
 import AdminNotifications from './AdminNotifications'
 
@@ -43,7 +45,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { label: 'Orders', href: '/admin/orders', permission: 'orders:read', icon: <ShoppingCart className="w-5 h-5" /> },
   { label: 'Customers', href: '/admin/customers', permission: 'customers:read', icon: <Users className="w-5 h-5" /> },
   { label: 'Reviews', href: '/admin/reviews', permission: 'reviews:read', icon: <Star className="w-5 h-5" /> },
-  { label: 'Discounts', href: '/admin/discounts', permission: 'discounts:read', icon: <Package className="w-5 h-5" /> },
+  { label: 'Discounts', href: '/admin/discounts', permission: 'discounts:read', icon: <Tag className="w-5 h-5" /> },
   { label: 'Reports', href: '/admin/reports', permission: 'dashboard:read', icon: <BarChart3 className="w-5 h-5" /> },
   { label: 'Roles & Permissions', href: '/admin/roles', permission: 'roles:read', icon: <Shield className="w-5 h-5" /> },
   { label: 'Messages', href: '/admin/messages', permission: 'messages:read', icon: <MessageSquare className="w-5 h-5" /> },
@@ -79,8 +81,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#C9A84C] animate-spin" />
+      <div className="min-h-screen bg-[#0B0B0B] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#F7F4EE] animate-spin" />
       </div>
     )
   }
@@ -89,18 +91,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (role === 'customer') {
     return (
-      <div className="min-h-screen bg-[#0D0D0D] flex flex-col items-center justify-center p-6 text-center" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div className="min-h-screen bg-[#0B0B0B] flex flex-col items-center justify-center p-6 text-center" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
         <div className="w-16 h-16 rounded-full bg-[#E05252]/10 border border-[#E05252]/30 flex items-center justify-center text-[#E05252] mb-5">
           <Shield className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-bold text-[#F0EDE8] mb-2">Access Denied</h1>
-        <p className="text-[#6B6B6B] text-sm max-w-md mb-6 leading-relaxed">
-          You are currently signed in as <strong className="text-[#F0EDE8]">{user.email}</strong>, which does not have administrator privileges.
+        <h1 className="text-2xl font-bold text-[#F7F4EE] mb-2">Access Denied</h1>
+        <p className="text-[#A39E93] text-sm max-w-md mb-6 leading-relaxed">
+          You are currently signed in as <strong className="text-[#F7F4EE]">{user.email}</strong>, which does not have administrator privileges.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/"
-            className="px-5 py-2.5 rounded-lg bg-[#1E1E1E] text-[#F0EDE8] text-sm hover:bg-[#2A2A2A] transition-colors"
+            className="px-5 py-2.5 rounded-lg bg-[#1A1A1A] text-[#F7F4EE] text-sm hover:bg-[#242424] transition-colors border border-[#2E2A24]"
           >
             Back to Store
           </Link>
@@ -109,7 +111,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               await signOut()
               router.push('/adminlogin')
             }}
-            className="px-5 py-2.5 rounded-lg bg-[#C9A84C] text-[#0D0D0D] font-semibold text-sm hover:bg-[#E2C270] transition-colors"
+            className="px-5 py-2.5 rounded-lg bg-[#F7F4EE] text-[#0B0B0B] font-semibold text-sm hover:bg-[#FFFFFF] transition-colors shadow-xs"
           >
             Sign In with Admin Account
           </button>
@@ -128,15 +130,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const NavContent = () => (
     <>
       {/* Logo */}
-      <div className="flex items-center justify-between px-4 h-16 border-b border-[#2A2A2A]">
+      <div className="flex items-center justify-between px-4 h-16 border-b border-[#24221F]">
         {!collapsed && (
-          <Link href="/admin" className="text-xl font-bold text-[#F0EDE8] tracking-tight">
-            New<span className="text-[#6B6B6B]">Step</span>
+          <Link href="/admin" className="text-xl font-bold text-[#FFFFFF] tracking-tight">
+            New<span className="text-[#D4CBBF]">Step</span>
           </Link>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="hidden lg:flex p-1.5 rounded-lg text-[#6B6B6B] hover:text-[#F0EDE8] hover:bg-[#1E1E1E] transition-colors"
+          className="hidden lg:flex p-1.5 rounded-lg text-[#A39E93] hover:text-[#FFFFFF] hover:bg-[#1A1A1A] transition-colors"
         >
           <ChevronLeft className={cn('w-4 h-4 transition-transform', collapsed && 'rotate-180')} />
         </button>
@@ -151,8 +153,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
               isActive(item.href)
-                ? 'bg-[#C9A84C]/10 border border-[#C9A84C]/30 text-[#C9A84C]'
-                : 'text-[#6B6B6B] hover:text-[#F0EDE8] hover:bg-[#1E1E1E]',
+                ? 'bg-[#F7F4EE] text-[#0B0B0B] font-semibold shadow-xs'
+                : 'text-[#A39E93] hover:text-[#FFFFFF] hover:bg-[#1A1A1A]',
               collapsed && 'justify-center'
             )}
             title={collapsed ? item.label : undefined}
@@ -164,17 +166,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </nav>
 
       {/* User section */}
-      <div className="border-t border-[#2A2A2A] p-4">
+      <div className="border-t border-[#24221F] p-4">
         {!collapsed && (
           <div className="mb-3">
-            <p className="text-sm text-[#F0EDE8] truncate">{user.email}</p>
-            <p className="text-xs text-[#6B6B6B] capitalize">{role || 'user'}</p>
+            <p className="text-sm text-[#F7F4EE] truncate">{user.email}</p>
+            <p className="text-xs text-[#A39E93] capitalize">{role || 'user'}</p>
           </div>
         )}
         <button
           onClick={signOut}
           className={cn(
-            'flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#6B6B6B] hover:text-[#E05252] hover:bg-[#E05252]/10 transition-colors w-full',
+            'flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#A39E93] hover:text-[#E05252] hover:bg-[#E05252]/10 transition-colors w-full',
             collapsed && 'justify-center'
           )}
           title="Sign out"
@@ -187,11 +189,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   )
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] text-[#F0EDE8]" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="min-h-screen bg-[#0B0B0B] text-[#F7F4EE]" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 bottom-0 z-40 hidden lg:flex flex-col bg-[#161616] border-r border-[#2A2A2A] transition-all duration-300',
+          'fixed left-0 top-0 bottom-0 z-40 hidden lg:flex flex-col bg-[#121212] border-r border-[#24221F] transition-all duration-300',
           collapsed ? 'w-[72px]' : 'w-[260px]'
         )}
       >
@@ -204,19 +206,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         <div
           onClick={() => setMobileOpen(false)}
-          className={cn('absolute inset-0 bg-black/60 transition-opacity', mobileOpen ? 'opacity-100' : 'opacity-0')}
+          className={cn('absolute inset-0 bg-black/70 transition-opacity', mobileOpen ? 'opacity-100' : 'opacity-0')}
         />
         <aside
           className={cn(
-            'absolute left-0 top-0 bottom-0 w-[260px] bg-[#161616] border-r border-[#2A2A2A] flex flex-col transition-transform duration-300',
+            'absolute left-0 top-0 bottom-0 w-[260px] bg-[#121212] border-r border-[#24221F] flex flex-col transition-transform duration-300',
             mobileOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
-          <div className="flex items-center justify-between px-4 h-16 border-b border-[#2A2A2A]">
-            <span className="text-xl font-bold text-[#F0EDE8]">
-              New<span className="text-[#6B6B6B]">Step</span>
+          <div className="flex items-center justify-between px-4 h-16 border-b border-[#24221F]">
+            <span className="text-xl font-bold text-[#FFFFFF]">
+              New<span className="text-[#D4CBBF]">Step</span>
             </span>
-            <button onClick={() => setMobileOpen(false)} className="p-1.5 text-[#6B6B6B] hover:text-[#F0EDE8]">
+            <button onClick={() => setMobileOpen(false)} className="p-1.5 text-[#A39E93] hover:text-[#FFFFFF]">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -228,8 +230,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                   isActive(item.href)
-                    ? 'bg-[#C9A84C]/10 border border-[#C9A84C]/30 text-[#C9A84C]'
-                    : 'text-[#6B6B6B] hover:text-[#F0EDE8] hover:bg-[#1E1E1E]'
+                    ? 'bg-[#F7F4EE] text-[#0B0B0B] font-semibold shadow-xs'
+                    : 'text-[#A39E93] hover:text-[#FFFFFF] hover:bg-[#1A1A1A]'
                 )}
               >
                 {item.icon}
@@ -237,10 +239,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </Link>
             ))}
           </nav>
-          <div className="border-t border-[#2A2A2A] p-4">
-            <p className="text-sm text-[#F0EDE8] truncate">{user.email}</p>
-            <p className="text-xs text-[#6B6B6B] capitalize mb-3">{role || 'user'}</p>
-            <button onClick={signOut} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#6B6B6B] hover:text-[#E05252] w-full">
+          <div className="border-t border-[#24221F] p-4">
+            <p className="text-sm text-[#F7F4EE] truncate">{user.email}</p>
+            <p className="text-xs text-[#A39E93] capitalize mb-3">{role || 'user'}</p>
+            <button onClick={signOut} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#A39E93] hover:text-[#E05252] w-full">
               <LogOut className="w-4 h-4" /> Sign out
             </button>
           </div>
@@ -250,20 +252,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Top bar */}
       <header
         className={cn(
-          'sticky top-0 z-30 bg-[#0D0D0D]/80 backdrop-blur-md border-b border-[#2A2A2A] transition-all duration-300',
+          'sticky top-0 z-30 bg-[#0B0B0B]/80 backdrop-blur-md border-b border-[#24221F] transition-all duration-300',
           collapsed ? 'lg:ml-[72px]' : 'lg:ml-[260px]'
         )}
       >
         <div className="flex items-center justify-between px-4 h-14">
-          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg text-[#6B6B6B] hover:text-[#F0EDE8] lg:hidden">
+          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg text-[#A39E93] hover:text-[#FFFFFF] lg:hidden">
             <Menu className="w-5 h-5" />
           </button>
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              target="_blank"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#D4CBBF] hover:text-[#FFFFFF] hover:bg-[#1A1A1A] transition-colors border border-[#2E2A24]"
+              title="Open storefront in new tab"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>View Store</span>
+            </Link>
+
+            <span className="hidden md:inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F7F4EE]/10 text-[#F7F4EE] border border-[#F7F4EE]/30 capitalize">
+              {role === 'superadmin' ? 'Super Admin' : (role ? role.replace('_', ' ') : 'Staff')}
+            </span>
+
             <AdminNotifications />
-            <div className="w-8 h-8 rounded-full bg-[#C9A84C] flex items-center justify-center text-[#0D0D0D] text-sm font-bold">
+            <div className="w-8 h-8 rounded-full bg-[#F7F4EE] flex items-center justify-center text-[#0B0B0B] text-sm font-bold shadow-xs">
               {(user.email?.[0] || 'A').toUpperCase()}
             </div>
           </div>

@@ -15,14 +15,14 @@ export default function ClientProductRating({
   useEffect(() => {
     let isMounted = true;
     fetch(`/api/reviews/stats?productId=${encodeURIComponent(productId)}`)
-      .then((res) => res.json())
+      .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (isMounted && data.success && data.data && data.data.totalReviews > 0) {
+        if (isMounted && data?.success && data?.data && data.data.totalReviews > 0) {
           setStats(data.data);
         }
       })
       .catch((err) => {
-        console.error("Failed to load rating stats:", err);
+        // Silently catch aborts / network blips
       });
 
     return () => {
@@ -34,13 +34,20 @@ export default function ClientProductRating({
 
   if (showText) {
     return (
-      <div className="mt-2 flex items-center gap-2 text-sm text-muted">
+      <a
+        href="#reviews"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' });
+        }}
+        className="mt-2 inline-flex items-center gap-2 text-sm text-muted hover:text-ink transition-colors cursor-pointer"
+      >
         <StarRating rating={stats.averageRating} size="sm" />
         <span>
           {stats.averageRating.toFixed(1)} · {stats.totalReviews}{" "}
           {stats.totalReviews === 1 ? "review" : "reviews"}
         </span>
-      </div>
+      </a>
     );
   }
 

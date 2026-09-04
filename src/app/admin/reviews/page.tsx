@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   ShieldX,
   Clock,
+  Eye,
 } from 'lucide-react'
 import type { Review } from '@/types'
 import toast from 'react-hot-toast'
@@ -29,8 +30,10 @@ export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<FilterStatus>('all')
+  const [starFilter, setStarFilter] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null)
 
   useEffect(() => {
     if (authLoading || !user) return
@@ -56,7 +59,7 @@ export default function AdminReviewsPage() {
     if (rows.length > 0) {
       gsap.from('.item-row', { opacity: 0, y: 15, stagger: 0.04, duration: 0.4, ease: 'power2.out', delay: 0.15, clearProps: 'all' })
     }
-  }, { scope: containerRef, dependencies: [loading, filter] })
+  }, { scope: containerRef, dependencies: [loading, filter, starFilter] })
 
   const handleModerate = async (id: string, status: 'approved' | 'rejected') => {
     if (!user) return
@@ -64,6 +67,9 @@ export default function AdminReviewsPage() {
       const token = await user.getIdToken()
       await moderateReview(token, id, status)
       setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)))
+      if (selectedReview?.id === id) {
+        setSelectedReview((prev) => prev ? { ...prev, status } : null)
+      }
       toast.success(`Review ${status} successfully`)
     } catch (err) {
       console.error('Moderation failed:', err)
@@ -77,6 +83,9 @@ export default function AdminReviewsPage() {
       const token = await user.getIdToken()
       await deleteReview(token, deleteId)
       setReviews((prev) => prev.filter((r) => r.id !== deleteId))
+      if (selectedReview?.id === deleteId) {
+        setSelectedReview(null)
+      }
       toast.success('Review deleted')
     } catch (err) {
       console.error('Delete failed:', err)
@@ -88,6 +97,7 @@ export default function AdminReviewsPage() {
 
   const filtered = reviews.filter((r) => {
     const statusMatch = filter === 'all' || r.status === filter
+    const starMatch = starFilter === null || r.rating === starFilter
     const q = search.toLowerCase()
     const searchMatch =
       !q ||
@@ -95,7 +105,7 @@ export default function AdminReviewsPage() {
       r.customerEmail?.toLowerCase().includes(q) ||
       r.productName?.toLowerCase().includes(q) ||
       r.comment?.toLowerCase().includes(q)
-    return statusMatch && searchMatch
+    return statusMatch && starMatch && searchMatch
   })
 
   const pendingCount = reviews.filter((r) => r.status === 'pending').length
@@ -117,16 +127,16 @@ export default function AdminReviewsPage() {
 
   const statusClass = (status: string) => {
     switch (status) {
-      case 'approved': return 'bg-[#4CAF7D]/10 text-[#4CAF7D] border-[#4CAF7D]/30'
+      case 'approved': return 'bg-white/10 text-white border-white/20'
       case 'rejected': return 'bg-[#E05252]/10 text-[#E05252] border-[#E05252]/30'
-      default: return 'bg-[#C9A84C]/10 text-[#C9A84C] border-[#C9A84C]/30'
+      default: return 'bg-[#F7F4EE]/10 text-[#F7F4EE] border-[#F7F4EE]/30'
     }
   }
 
   if (loading) {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#C9A84C] animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#F7F4EE] animate-spin" />
       </div>
     )
   }
@@ -136,62 +146,93 @@ export default function AdminReviewsPage() {
       {/* Header */}
       <div className="page-header flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-[#F0EDE8]">Reviews</h1>
-          <p className="text-[#6B6B6B] text-sm mt-1">
+          <h1 className="text-2xl font-semibold text-[#FAF8F5]">Reviews</h1>
+          <p className="text-[#8A8478] text-sm mt-1">
             Manage customer product reviews · {reviews.length} total
             {pendingCount > 0 && (
-              <span className="ml-2 text-[#C9A84C]">({pendingCount} pending approval)</span>
+              <span className="ml-2 text-[#F7F4EE]">({pendingCount} pending approval)</span>
             )}
           </p>
         </div>
       </div>
 
       {/* Filters + Search */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => (
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-2">
+            {FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setFilter(f.value)}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
+                  filter === f.value
+                    ? 'bg-[#F7F4EE] border-[#F7F4EE] text-[#0B0B0B] font-semibold'
+                    : 'bg-[#121212] border-[#24221F] text-[#8A8478] hover:text-[#FAF8F5] hover:border-[#3A352F]'
+                )}
+              >
+                {f.label}
+                {f.count !== undefined && (
+                  <span className="ml-1.5 opacity-60">{f.count}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 border-l border-[#24221F] pl-3">
             <button
-              key={f.value}
-              onClick={() => setFilter(f.value)}
+              onClick={() => setStarFilter(null)}
               className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
-                filter === f.value
-                  ? 'bg-[#C9A84C]/10 border-[#C9A84C]/30 text-[#C9A84C]'
-                  : 'bg-[#161616] border-[#2A2A2A] text-[#6B6B6B] hover:text-[#F0EDE8] hover:border-[#3A3A3A]'
+                'px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors',
+                starFilter === null
+                  ? 'bg-[#F7F4EE] border-[#F7F4EE] text-[#0B0B0B] font-semibold'
+                  : 'bg-[#121212] border-[#24221F] text-[#8A8478] hover:text-[#FAF8F5]'
               )}
             >
-              {f.label}
-              {f.count !== undefined && (
-                <span className="ml-1.5 opacity-60">{f.count}</span>
-              )}
+              All Stars
             </button>
-          ))}
-        </div>
+            {[5, 4, 3, 2, 1].map((s) => (
+              <button
+                key={s}
+                onClick={() => setStarFilter(starFilter === s ? null : s)}
+                className={cn(
+                  'px-2 py-1 rounded-lg text-xs font-medium border transition-colors flex items-center gap-1',
+                  starFilter === s
+                    ? 'bg-[#F7F4EE] border-[#F7F4EE] text-[#0B0B0B] font-semibold'
+                    : 'bg-[#121212] border-[#24221F] text-[#8A8478] hover:text-[#FAF8F5]'
+                )}
+              >
+                <span>{s}</span>
+                <Star className="w-3 h-3 text-[#FAF8F5] fill-[#FAF8F5]" />
+              </button>
+            ))}
+          </div>
 
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B6B6B]" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search reviews..."
-            className="w-full rounded-lg bg-[#161616] border border-[#2A2A2A] pl-10 pr-4 py-2 text-sm text-[#F0EDE8] placeholder:text-[#6B6B6B] outline-none focus:border-[#C9A84C]/50"
-          />
+          <div className="relative flex-1 sm:max-w-xs ml-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8A8478]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search reviews..."
+              className="w-full rounded-lg bg-[#121212] border border-[#24221F] pl-10 pr-4 py-2 text-sm text-[#FAF8F5] placeholder:text-[#8A8478] outline-none focus:border-[#F7F4EE]"
+            />
+          </div>
         </div>
       </div>
 
       {/* Reviews Table */}
       {filtered.length === 0 ? (
-        <div className="bg-[#161616] rounded-xl border border-[#2A2A2A] p-12 text-center">
-          <MessageSquare className="w-10 h-10 text-[#6B6B6B] mx-auto" />
-          <p className="mt-3 text-sm text-[#6B6B6B]">No reviews found</p>
+        <div className="bg-[#121212] rounded-xl border border-[#24221F] p-12 text-center">
+          <MessageSquare className="w-10 h-10 text-[#8A8478] mx-auto" />
+          <p className="mt-3 text-sm text-[#8A8478]">No reviews found</p>
         </div>
       ) : (
-        <div className="bg-[#161616] rounded-xl border border-[#2A2A2A] overflow-hidden">
+        <div className="bg-[#121212] rounded-xl border border-[#24221F] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#2A2A2A] text-[#6B6B6B]">
+                <tr className="border-b border-[#24221F] text-[#8A8478]">
                   <th className="text-left px-4 py-3 font-medium">Customer</th>
                   <th className="text-left px-4 py-3 font-medium">Product</th>
                   <th className="text-left px-4 py-3 font-medium">Rating</th>
@@ -205,18 +246,18 @@ export default function AdminReviewsPage() {
                 {filtered.map((review) => (
                   <tr
                     key={review.id}
-                    className="item-row border-b border-[#2A2A2A] last:border-0 hover:bg-[#1E1E1E] transition-colors"
+                    className="item-row border-b border-[#24221F]/50 last:border-0 hover:bg-[#181818] transition-colors"
                   >
                     <td className="px-4 py-3">
-                      <p className="text-[#F0EDE8] font-medium truncate max-w-[140px]">
+                      <p className="text-[#FAF8F5] font-medium truncate max-w-[140px]">
                         {review.customerName || 'Unknown'}
                       </p>
-                      <p className="text-[#6B6B6B] text-xs truncate max-w-[140px]">
+                      <p className="text-[#8A8478] text-xs truncate max-w-[140px]">
                         {review.customerEmail}
                       </p>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="text-[#F0EDE8] truncate max-w-[160px]">
+                      <p className="text-[#FAF8F5] truncate max-w-[160px]">
                         {review.productName || review.productId}
                       </p>
                     </td>
@@ -227,14 +268,14 @@ export default function AdminReviewsPage() {
                             key={i}
                             className={cn(
                               'w-3.5 h-3.5',
-                              i < review.rating ? 'text-[#F59E0B] fill-[#F59E0B]' : 'text-[#2A2A2A]'
+                              i < review.rating ? 'text-[#FAF8F5] fill-[#FAF8F5]' : 'text-[#24221F]'
                             )}
                           />
                         ))}
                       </div>
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
-                      <p className="text-[#F0EDE8] text-xs leading-relaxed line-clamp-2 max-w-[300px]">
+                      <p className="text-[#FAF8F5] text-xs leading-relaxed line-clamp-2 max-w-[300px]">
                         {review.title && <strong>{review.title}: </strong>}
                         {review.comment}
                       </p>
@@ -248,7 +289,7 @@ export default function AdminReviewsPage() {
                         {(review.status as string).charAt(0).toUpperCase() + (review.status as string).slice(1)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 hidden md:table-cell text-[#6B6B6B] text-xs">
+                    <td className="px-4 py-3 hidden md:table-cell text-[#8A8478] text-xs">
                       {new Date(review.createdAt as unknown as string).toLocaleDateString('en-LK', {
                         month: 'short',
                         day: 'numeric',
@@ -257,11 +298,18 @@ export default function AdminReviewsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setSelectedReview(review)}
+                          title="View Details"
+                          className="p-1.5 rounded-lg text-[#8A8478] hover:text-[#F7F4EE] hover:bg-[#F7F4EE]/10 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                         {review.status !== 'approved' && (
                           <button
                             onClick={() => handleModerate(review.id, 'approved')}
                             title="Approve"
-                            className="p-1.5 rounded-lg text-[#4CAF7D] hover:bg-[#4CAF7D]/10 transition-colors"
+                            className="p-1.5 rounded-lg text-[#FAF8F5] hover:bg-white/10 transition-colors"
                           >
                             <Check className="w-4 h-4" />
                           </button>
@@ -278,7 +326,7 @@ export default function AdminReviewsPage() {
                         <button
                           onClick={() => setDeleteId(review.id)}
                           title="Delete"
-                          className="p-1.5 rounded-lg text-[#6B6B6B] hover:text-[#E05252] hover:bg-[#E05252]/10 transition-colors"
+                          className="p-1.5 rounded-lg text-[#8A8478] hover:text-[#E05252] hover:bg-[#E05252]/10 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -292,19 +340,119 @@ export default function AdminReviewsPage() {
         </div>
       )}
 
+      {/* Review Details Modal */}
+      {selectedReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div onClick={() => setSelectedReview(null)} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative bg-[#141414] rounded-xl border border-[#24221F] p-6 max-w-lg w-full mx-4 shadow-2xl">
+            <div className="flex items-start justify-between pb-4 border-b border-[#24221F]">
+              <div>
+                <h3 className="text-lg font-semibold text-[#FAF8F5]">Review Details</h3>
+                <p className="text-xs text-[#8A8478] mt-0.5">
+                  Product: <strong className="text-[#FAF8F5]">{selectedReview.productName || selectedReview.productId}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedReview(null)}
+                className="p-1.5 text-[#8A8478] hover:text-[#FAF8F5] rounded-lg hover:bg-[#1C1C1C]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <Star
+                      key={i}
+                      className={cn(
+                        'w-4 h-4',
+                        i < selectedReview.rating ? 'text-[#FAF8F5] fill-[#FAF8F5]' : 'text-[#24221F]'
+                      )}
+                    />
+                  ))}
+                  <span className="ml-2 text-sm font-bold text-[#FAF8F5]">{selectedReview.rating} / 5</span>
+                </div>
+                <span className={cn(
+                  'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border',
+                  statusClass(selectedReview.status as string)
+                )}>
+                  {statusIcon(selectedReview.status as string)}
+                  {(selectedReview.status as string).toUpperCase()}
+                </span>
+              </div>
+
+              <div className="bg-[#0B0B0B] rounded-lg p-3 border border-[#24221F] text-xs space-y-1">
+                <p><span className="text-[#8A8478]">Customer:</span> <strong className="text-[#FAF8F5]">{selectedReview.customerName}</strong> ({selectedReview.customerEmail})</p>
+                <p><span className="text-[#8A8478]">Verified Buyer:</span> <strong className={selectedReview.isVerifiedPurchase ? 'text-[#F7F4EE]' : 'text-[#8A8478]'}>{selectedReview.isVerifiedPurchase ? 'Yes (Verified)' : 'No'}</strong></p>
+                <p><span className="text-[#8A8478]">Date:</span> {new Date(selectedReview.createdAt as unknown as string).toLocaleString('en-LK')}</p>
+              </div>
+
+              <div>
+                {selectedReview.title && (
+                  <h4 className="text-sm font-semibold text-[#FAF8F5] mb-1.5">
+                    &ldquo;{selectedReview.title}&rdquo;
+                  </h4>
+                )}
+                <p className="text-sm text-[#FAF8F5]/90 leading-relaxed whitespace-pre-wrap bg-[#181818] p-3 rounded-lg border border-[#24221F]">
+                  {selectedReview.comment}
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#24221F] flex items-center justify-between">
+              <button
+                onClick={() => {
+                  setDeleteId(selectedReview.id)
+                }}
+                className="px-3 py-2 text-xs text-[#E05252] hover:bg-[#E05252]/10 rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
+
+              <div className="flex items-center gap-2">
+                {selectedReview.status !== 'rejected' && (
+                  <button
+                    onClick={() => handleModerate(selectedReview.id, 'rejected')}
+                    className="px-4 py-2 rounded-lg text-xs font-medium text-[#E05252] bg-[#E05252]/10 border border-[#E05252]/30 hover:bg-[#E05252]/20 transition-colors"
+                  >
+                    Reject Review
+                  </button>
+                )}
+                {selectedReview.status !== 'approved' && (
+                  <button
+                    onClick={() => handleModerate(selectedReview.id, 'approved')}
+                    className="px-4 py-2 rounded-lg text-xs font-semibold text-[#0B0B0B] bg-[#F7F4EE] hover:bg-[#FFFFFF] transition-all shadow-xs"
+                  >
+                    Approve Review
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedReview(null)}
+                  className="px-4 py-2 rounded-lg text-xs text-[#FAF8F5] bg-[#1C1C1C] border border-[#24221F] hover:bg-[#24221F] transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div onClick={() => setDeleteId(null)} className="absolute inset-0 bg-black/60" />
-          <div className="relative bg-[#161616] rounded-xl border border-[#2A2A2A] p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold text-[#F0EDE8]">Delete Review</h3>
-            <p className="mt-2 text-sm text-[#6B6B6B]">
+          <div onClick={() => setDeleteId(null)} className="absolute inset-0 bg-black/60 backdrop-blur-xs" />
+          <div className="relative bg-[#141414] rounded-xl border border-[#24221F] p-6 max-w-sm w-full mx-4 shadow-2xl">
+            <h3 className="text-lg font-semibold text-[#FAF8F5]">Delete Review</h3>
+            <p className="mt-2 text-sm text-[#8A8478]">
               Are you sure you want to permanently delete this review? This action cannot be undone.
             </p>
             <div className="mt-5 flex justify-end gap-3">
               <button
                 onClick={() => setDeleteId(null)}
-                className="px-4 py-2 rounded-lg text-sm text-[#F0EDE8] bg-[#1E1E1E] border border-[#2A2A2A] hover:bg-[#2A2A2A] transition-colors"
+                className="px-4 py-2 rounded-lg text-sm text-[#FAF8F5] bg-[#1C1C1C] border border-[#24221F] hover:bg-[#24221F] transition-colors"
               >
                 Cancel
               </button>

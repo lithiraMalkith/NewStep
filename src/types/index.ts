@@ -249,6 +249,7 @@ export interface DashboardStats {
   revenueToday: number
   revenueThisWeek: number
   revenueThisMonth: number
+  totalRevenue?: number
   pendingOrders: number
   completedOrders: number
   lowStockProducts: number
@@ -257,7 +258,9 @@ export interface DashboardStats {
   revenueData: { day: string; revenue: number }[]
   ordersData: { day: string; orders: number; completed: number }[]
   categoryRevenue: { category: string; revenue: number }[]
-  topProducts: { name: string; sold: number; revenue: number }[]
+  salesByCategory?: { name: string; value: number; color?: string }[]
+  topProducts: { name: string; sold: number; revenue: number; image?: string; category?: string }[]
+  recentOrders?: { id: string; orderRef: string; customerName: string; date: string; status: string; total: number; itemCount: number }[]
   recentActivities: { id: string; type: 'order' | 'product' | 'user'; message: string; time: string }[]
   revenueTrend: number
   ordersTrend: number

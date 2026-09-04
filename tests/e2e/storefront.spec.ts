@@ -229,7 +229,7 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
       }
     });
 
-    test('Review section renders and write review requires authentication', async ({ page }) => {
+    test('Review section renders with verified purchaser notice for guest visitors', async ({ page }) => {
       await page.goto('/shop');
       await page.waitForLoadState('networkidle');
       await page.locator('a[href*="/product/"]').first().click();
@@ -238,13 +238,13 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
       // Reviews section exists
       await expect(page.getByRole('heading', { name: /Reviews/i })).toBeVisible();
 
-      // Write a Review button
-      const writeReviewBtn = page.getByRole('button', { name: /Write a Review/i });
-      await expect(writeReviewBtn).toBeVisible();
-      await writeReviewBtn.click();
+      // Verified purchaser security notice is shown to unauthenticated guests
+      await expect(page.getByText(/Verified Buyer Reviews/i)).toBeVisible();
+      await expect(page.getByText(/Only verified customers who purchased/i)).toBeVisible();
 
-      // Toast or sign-in message occurs for unauthenticated users
-      await page.waitForTimeout(300);
+      // Write review button is hidden for unauthenticated guests
+      const writeReviewBtn = page.getByRole('button', { name: /Write a Review/i });
+      await expect(writeReviewBtn).toHaveCount(0);
     });
   });
 

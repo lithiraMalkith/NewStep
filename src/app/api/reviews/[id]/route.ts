@@ -33,12 +33,10 @@ export async function PUT(
         updatedAt: new Date(),
       })
 
-      // If approved, update product's aggregate rating
-      if (parsed.data.status === 'approved') {
-        const productId = doc.data()?.productId
-        if (productId) {
-          await updateProductRating(productId)
-        }
+      // Recalculate product's aggregate rating whenever review status is updated
+      const productId = doc.data()?.productId || doc.data()?.productSlug
+      if (productId) {
+        await updateProductRating(productId)
       }
 
       return NextResponse.json({
@@ -92,20 +90,20 @@ export async function DELETE(
  */
 async function updateProductRating(productId: string) {
   try {
-    const approvedReviews = await adminDb
-      .collection('reviews')
-      .where('productId', '==', productId)
-      .where('status', '==', 'approved')
-      .get()
+    const [byPid, bySlug] = await Promise.all([
+      adminDb.collection('reviews').where('productId', '==', productId).where('status', '==', 'approved').get(),
+      adminDb.collection('reviews').where('productSlug', '==', productId).where('status', '==', 'approved').get(),
+    ])
 
-    const count = approvedReviews.size
-    const totalRating = approvedReviews.docs.reduce(
-      (sum, doc) => sum + (doc.data().rating || 0),
-      0
-    )
+    const reviewMap = new Map<string, number>()
+    byPid.docs.forEach((d) => reviewMap.set(d.id, d.data().rating || 0))
+    bySlug.docs.forEach((d) => reviewMap.set(d.id, d.data().rating || 0))
+
+    const count = reviewMap.size
+    const totalRating = Array.from(reviewMap.values()).reduce((sum, r) => sum + r, 0)
     const avgRating = count > 0 ? Math.round((totalRating / count) * 10) / 10 : 0
 
-    // Update the product document
+    // Update the product document by slug first
     const productQuery = await adminDb
       .collection('products')
       .where('slug', '==', productId)

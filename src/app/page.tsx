@@ -8,6 +8,7 @@ import Reveal from "@/components/Reveal";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import { adminDb } from "@/lib/firebase-admin";
 import type { Product } from "@/lib/types";
+import { products as staticProducts } from "@/lib/products";
 
 const TRUST = [
   { title: "Cash on Delivery", body: "Pay only when the box is in your hands." },
@@ -34,15 +35,15 @@ const REVIEWS = [
   },
 ];
 
-async function getProducts() {
+async function getProducts(): Promise<Product[]> {
   try {
     const snapshot = await adminDb
       .collection('products')
       .where('visibility', '==', 'published')
-      .limit(20)
+      .limit(50)
       .get()
 
-    return snapshot.docs.map(doc => {
+    const dbProducts = snapshot.docs.map(doc => {
       const data = doc.data()
       return { 
         id: doc.id, 
@@ -51,9 +52,23 @@ async function getProducts() {
         updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
       } as unknown as Product
     })
+
+    if (dbProducts.length === 0) {
+      return staticProducts;
+    }
+
+    // Gracefully merge DB products with static products without duplicate slugs
+    const existingSlugs = new Set(dbProducts.map((p) => p.slug));
+    const merged = [...dbProducts];
+    for (const p of staticProducts) {
+      if (!existingSlugs.has(p.slug)) {
+        merged.push(p);
+      }
+    }
+    return merged;
   } catch (error) {
-    console.error("Failed to fetch products for home page:", error)
-    return []
+    console.error("Failed to fetch products for home page, falling back to static catalog:", error)
+    return staticProducts
   }
 }
 

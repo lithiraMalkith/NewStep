@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
 import StarRating from "./StarRating";
 import toast from "react-hot-toast";
+import { ShieldCheck, PackageCheck } from "lucide-react";
 
 interface ReviewData {
   id: string;
@@ -22,6 +24,13 @@ interface ReviewStats {
   ratingDistribution: Record<number, number>;
 }
 
+interface EligibilityData {
+  canReview: boolean;
+  hasPurchased: boolean;
+  alreadyReviewed: boolean;
+  isAuthenticated: boolean;
+}
+
 export default function ReviewSection({ productId }: { productId: string }) {
   const { user } = useAuth();
   const [reviews, setReviews] = useState<ReviewData[]>([]);
@@ -31,26 +40,59 @@ export default function ReviewSection({ productId }: { productId: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
+  // Eligibility state
+  const [eligibility, setEligibility] = useState<EligibilityData | null>(null);
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+
   // Form state
   const [rating, setRating] = useState(0);
   const [title, setTitle] = useState("");
   const [comment, setComment] = useState("");
 
+  const checkEligibility = useCallback(async () => {
+    if (!user) {
+      setEligibility(null);
+      return;
+    }
+
+    setCheckingEligibility(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/reviews/eligibility?productId=${encodeURIComponent(productId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json().catch(() => null);
+        if (json?.success && json.data) {
+          setEligibility(json.data);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check review eligibility:", err);
+    } finally {
+      setCheckingEligibility(false);
+    }
+  }, [user, productId]);
+
+  useEffect(() => {
+    checkEligibility();
+  }, [checkEligibility]);
+
   const loadReviews = useCallback(async () => {
     try {
       const [reviewsRes, statsRes] = await Promise.all([
-        fetch(`/api/reviews?productId=${productId}`),
-        fetch(`/api/reviews/stats?productId=${productId}`),
+        fetch(`/api/reviews?productId=${encodeURIComponent(productId)}`),
+        fetch(`/api/reviews/stats?productId=${encodeURIComponent(productId)}`),
       ]);
 
       if (reviewsRes.ok) {
-        const reviewsData = await reviewsRes.json();
-        if (reviewsData.success) setReviews(reviewsData.data || []);
+        const reviewsData = await reviewsRes.json().catch(() => null);
+        if (reviewsData?.success) setReviews(reviewsData.data || []);
       }
 
       if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        if (statsData.success) setStats(statsData.data);
+        const statsData = await statsRes.json().catch(() => null);
+        if (statsData?.success) setStats(statsData.data);
       }
     } catch (err) {
       console.error("Failed to load reviews:", err);
@@ -97,6 +139,7 @@ export default function ReviewSection({ productId }: { productId: string }) {
         setRating(0);
         setTitle("");
         setComment("");
+        checkEligibility();
         loadReviews();
       } else {
         toast.error(data.error || "Failed to submit review");
@@ -108,7 +151,16 @@ export default function ReviewSection({ productId }: { productId: string }) {
     }
   };
 
-  const displayedReviews = showAll ? reviews : reviews.slice(0, 4);
+  const [ratingFilter, setRatingFilter] = useState<number | null>(null);
+
+  // Check if current logged-in user already submitted a review
+  const hasUserReviewed = Boolean(user && reviews.some((r) => r.customerId === user.uid));
+
+  const filteredReviews = ratingFilter
+    ? reviews.filter((r) => r.rating === ratingFilter)
+    : reviews;
+
+  const displayedReviews = showAll ? filteredReviews : filteredReviews.slice(0, 4);
   const maxCount = stats
     ? Math.max(...Object.values(stats.ratingDistribution), 1)
     : 1;
@@ -156,8 +208,17 @@ export default function ReviewSection({ productId }: { productId: string }) {
                 {[5, 4, 3, 2, 1].map((star) => {
                   const count = stats.ratingDistribution[star] || 0;
                   const pct = (count / maxCount) * 100;
+                  const isSelected = ratingFilter === star;
                   return (
-                    <div key={star} className="flex items-center gap-2 text-sm">
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRatingFilter(isSelected ? null : star)}
+                      className={`w-full flex items-center gap-2 text-sm p-1 rounded hover:bg-mist/40 transition-colors text-left ${
+                        isSelected ? "bg-mist font-medium" : ""
+                      }`}
+                      title={`Filter by ${star} star reviews`}
+                    >
                       <span className="w-3 text-muted">{star}</span>
                       <svg
                         viewBox="0 0 24 24"
@@ -173,7 +234,7 @@ export default function ReviewSection({ productId }: { productId: string }) {
                         />
                       </div>
                       <span className="w-6 text-right text-muted">{count}</span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -182,28 +243,68 @@ export default function ReviewSection({ productId }: { productId: string }) {
             <p className="mt-3 text-sm text-muted">No reviews yet.</p>
           )}
 
-          {/* Write a Review Button */}
-          <button
-            onClick={() => {
-              if (!user) {
-                toast.error("Please sign in to write a review");
-                return;
-              }
-              setShowForm(!showForm);
-            }}
-            className="btn btn-solid mt-6 w-full text-sm"
-          >
-            Write a Review
-          </button>
+          {/* Write a Review / Verified Buyer Notices */}
+          {!user ? (
+            <div className="mt-6 rounded-xl border border-[#E5DDD0] bg-[#FAF8F5] p-5 text-center">
+              <div className="mx-auto mb-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-[#F7F4EE] border border-[#E5DDD0] text-ink">
+                <ShieldCheck className="h-4.5 w-4.5" />
+              </div>
+              <p className="text-[13px] font-semibold text-ink">Verified Buyer Reviews</p>
+              <p className="mt-1 text-xs text-muted leading-relaxed">
+                Only verified customers who purchased this footwear can leave a review.
+              </p>
+              <Link
+                href={`/account/login?redirect=/product/${encodeURIComponent(productId)}`}
+                className="mt-3.5 inline-flex items-center justify-center rounded-lg border border-[#E5DDD0] bg-[#FFFFFF] px-3.5 py-1.5 text-xs font-medium text-ink shadow-xs transition-colors hover:bg-[#F7F4EE] hover:border-ink/30"
+              >
+                Sign in to check purchase status
+              </Link>
+            </div>
+          ) : checkingEligibility && !eligibility ? (
+            <div className="mt-6 rounded-xl border border-[#E5DDD0] bg-[#FAF8F5] p-4 text-center text-xs text-muted">
+              Checking purchase status...
+            </div>
+          ) : eligibility?.alreadyReviewed || hasUserReviewed ? (
+            <div className="mt-6 rounded-xl border border-[#E5DDD0] bg-[#FAF8F5] p-4 text-center">
+              <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-ink">
+                <ShieldCheck className="h-3.5 w-3.5 text-ink" />
+                <span>Verified Review Submitted</span>
+              </div>
+              <p className="mt-1 text-[11px] text-muted">You have already reviewed this product. Thank you!</p>
+            </div>
+          ) : !eligibility?.hasPurchased ? (
+            <div className="mt-6 rounded-xl border border-[#E5DDD0] bg-[#FAF8F5] p-5 text-center">
+              <div className="mx-auto mb-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-[#F7F4EE] border border-[#E5DDD0] text-muted">
+                <PackageCheck className="h-4.5 w-4.5" />
+              </div>
+              <p className="text-[13px] font-semibold text-ink">Verified Purchases Only</p>
+              <p className="mt-1 text-xs text-muted leading-relaxed">
+                Reviews are reserved for customers who have ordered this item. If you ordered under a different email, please sign into that account.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-2.5">
+              <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-ink">
+                <ShieldCheck className="h-3.5 w-3.5 text-ink" />
+                <span>Verified Purchaser · Eligible to Review</span>
+              </div>
+              <button
+                onClick={() => setShowForm(!showForm)}
+                className="btn btn-solid w-full text-sm"
+              >
+                {showForm ? "Close Form" : "Write a Review"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Reviews List */}
         <div className="flex-1 min-w-0">
           {/* Review Submission Form */}
-          {showForm && user && (
+          {showForm && user && (eligibility?.canReview ?? false) && (
             <form
               onSubmit={handleSubmit}
-              className="mb-8 rounded-xl border border-line bg-mist/30 p-6"
+              className="mb-8 rounded-xl border border-[#E5DDD0] bg-[#FAF8F5] p-6 shadow-xs"
             >
               <h3 className="text-[15px] font-semibold">Write your review</h3>
 
@@ -273,11 +374,33 @@ export default function ReviewSection({ productId }: { productId: string }) {
           )}
 
           {/* Reviews List */}
-          {reviews.length === 0 ? (
+          {ratingFilter !== null && (
+            <div className="mb-4 flex items-center justify-between rounded-lg bg-mist/60 px-3 py-2 text-xs">
+              <span>Showing <strong>{ratingFilter} Star</strong> reviews ({filteredReviews.length})</span>
+              <button
+                onClick={() => setRatingFilter(null)}
+                className="underline hover:text-sale font-medium"
+              >
+                Clear filter
+              </button>
+            </div>
+          )}
+
+          {filteredReviews.length === 0 ? (
             <div className="py-10 text-center">
               <p className="text-muted text-sm">
-                No reviews yet. Be the first to review this product!
+                {ratingFilter !== null
+                  ? `No ${ratingFilter}-star reviews found.`
+                  : "No reviews yet. Be the first to review this product!"}
               </p>
+              {ratingFilter !== null && (
+                <button
+                  onClick={() => setRatingFilter(null)}
+                  className="mt-2 text-xs underline text-ink font-medium"
+                >
+                  View all reviews
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -295,16 +418,8 @@ export default function ReviewSection({ productId }: { productId: string }) {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {review.isVerifiedPurchase && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-ok/10 px-2 py-0.5 text-[10px] font-medium text-ok">
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                              className="w-3 h-3"
-                            >
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#FAF8F5] border border-[#E5DDD0] px-2.5 py-0.5 text-[10px] font-medium text-ink">
+                            <ShieldCheck className="w-3 h-3 text-ink" />
                             Verified
                           </span>
                         )}

@@ -54,7 +54,7 @@ export default function ProductCard({
             <span className="eyebrow bg-paper px-2 py-1 text-ink rounded-full text-[10px]">Sold Out</span>
           )}
           {product.isBestseller && (
-            <span className="eyebrow bg-[#C9A84C] px-2 py-1 text-ink rounded-full text-[10px]">Best Seller</span>
+            <span className="eyebrow bg-[#F7F4EE] border border-[#E5DDD0] px-2 py-1 text-ink rounded-full text-[10px] shadow-xs">Best Seller</span>
           )}
         </div>
 
@@ -67,28 +67,28 @@ export default function ProductCard({
         </div>
       </Link>
 
-      <Link href={`/product/${product.slug}`} className="flex flex-col flex-1 px-1">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="text-[15px] font-medium leading-snug line-clamp-1 group-hover:underline underline-offset-4">{product.name}</h3>
-          <p className="whitespace-nowrap text-[15px] font-medium shrink-0">
+      <Link href={`/product/${product.slug}`} className="flex flex-col flex-1 px-0.5">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-2">
+          <h3 className="text-sm sm:text-[15px] font-medium leading-snug line-clamp-1 group-hover:underline underline-offset-4">{product.name}</h3>
+          <p className="whitespace-nowrap text-xs sm:text-[15px] font-semibold sm:font-medium text-ink shrink-0">
             {LKR(product.price)}
           </p>
         </div>
         
-        <p className="mt-1 text-sm text-muted">{product.subtitle}</p>
-        <p className="text-sm text-muted">{product.colour}</p>
+        <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted line-clamp-1">{product.subtitle}</p>
+        <p className="text-xs sm:text-sm text-muted line-clamp-1">{product.colour}</p>
         
         {/* Rating */}
         <ClientProductRating productId={product.id} />
 
-        <div className="mt-auto pt-2 flex items-center gap-2">
+        <div className="mt-auto pt-1.5 sm:pt-2 flex items-center gap-2">
           {product.compareAtPrice && (
-            <p className="text-sm text-muted line-through">
+            <p className="text-xs sm:text-sm text-muted line-through">
               {LKR(product.compareAtPrice)}
             </p>
           )}
           {lowStock && (
-            <p className="text-xs font-medium text-sale bg-sale/10 px-2 py-0.5 rounded text-left inline-block">
+            <p className="text-[10px] sm:text-xs font-medium text-sale bg-sale/10 px-1.5 sm:px-2 py-0.5 rounded text-left inline-block">
               Only {stock} left
             </p>
           )}

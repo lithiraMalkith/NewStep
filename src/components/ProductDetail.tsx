@@ -74,8 +74,9 @@ export default function ProductDetail({ product }: { product: Product }) {
   };
 
   return (
-    <div className="container-x grid gap-10 py-6 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:py-10">
-      {/* Gallery */}
+    <div>
+      <div className="container-x grid gap-10 py-6 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:py-10">
+        {/* Gallery */}
       <div>
         <div className="relative aspect-square overflow-hidden bg-mist">
           <Image
@@ -179,7 +180,10 @@ export default function ProductDetail({ product }: { product: Product }) {
             </p>
           )}
           {selected && selected.stockQty > 3 && (
-            <p className="mt-3 text-sm text-ok">In stock &mdash; ready to ship</p>
+            <p className="mt-3 text-sm text-ink flex items-center gap-2">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-ink" />
+              In stock &mdash; ready to ship
+            </p>
           )}
         </div>
 
@@ -250,11 +254,14 @@ export default function ProductDetail({ product }: { product: Product }) {
           </Accordion>
         </div>
       </div>
+      </div>
 
       {/* Reviews Section */}
-      <div className="container-x">
-        <ReviewSection productId={product.id} />
-      </div>
+      <section id="reviews" className="border-t border-line/60 bg-paper py-12 lg:py-16">
+        <div className="container-x">
+          <ReviewSection productId={product.id} />
+        </div>
+      </section>
     </div>
   );
 }
