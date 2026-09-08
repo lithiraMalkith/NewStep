@@ -18,8 +18,14 @@ export const productSchema = z.object({
   details: z.array(z.string()).optional().default([]),
   variants: z.array(z.object({
     size: z.number(),
-    sku: z.string(),
-    stockQty: z.number().int().min(0),
+    colours: z.array(z.object({
+      colour: z.string().min(1),
+      sku: z.string(),
+      stockQty: z.number().int().min(0),
+    })).optional().default([]),
+    // legacy flat fields (backward compat)
+    sku: z.string().optional(),
+    stockQty: z.number().int().min(0).optional(),
   })).min(1, 'At least one variant is required'),
   images: z.array(z.string()).optional().default([]),
   visibility: z.enum(['published', 'draft']).default('draft'),
@@ -165,3 +171,27 @@ export const discountValidateSchema = z.object({
   orderTotal: z.number().positive(),
   categories: z.array(z.string()).optional().default([]),
 })
+
+// ─── Featured Products ───
+
+export const featuredUpdateSchema = z.object({
+  featured: z.array(z.object({
+    id: z.string(),
+    featuredOrder: z.number().int().min(0),
+    badge: z.string().optional(),
+  })),
+})
+
+export type FeaturedUpdateData = z.infer<typeof featuredUpdateSchema>
+
+// ─── Audit Log ───
+
+export const auditCreateSchema = z.object({
+  action: z.string().min(1),
+  resource: z.string().min(1),
+  resourceId: z.string().optional(),
+  resourceName: z.string().optional(),
+  details: z.string().optional(),
+})
+
+export type AuditCreateData = z.infer<typeof auditCreateSchema>

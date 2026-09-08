@@ -10,6 +10,15 @@ import { adminDb } from "@/lib/firebase-admin";
 import type { Product } from "@/lib/types";
 import { products as staticProducts } from "@/lib/products";
 
+interface StorefrontCategory { id: string; name: string; slug: string; image?: string; blurb?: string }
+
+// Fallback category tiles when Firestore is empty
+const STATIC_CATEGORIES: StorefrontCategory[] = [
+  { id: 'mens', name: "Men's Collection", slug: 'mens', image: '/images/banner.jpg', blurb: 'Grip, cushioning and a sole that survives Colombo pavements.' },
+  { id: 'womens', name: "Women's", slug: 'womens', image: '/images/p4.jpg', blurb: 'Court, casual and slides' },
+  { id: 'kids', name: "Kids'", slug: 'kids', image: '/images/p6.jpg', blurb: 'School-ready and play-proof' },
+]
+
 const TRUST = [
   { title: "Cash on Delivery", body: "Pay only when the box is in your hands." },
   { title: "Island-wide Delivery", body: "2–4 working days to every district." },
@@ -35,47 +44,50 @@ const REVIEWS = [
   },
 ];
 
-async function getProducts(): Promise<Product[]> {
+async function getHomeData(): Promise<{ products: Product[]; categories: StorefrontCategory[] }> {
   try {
-    const snapshot = await adminDb
-      .collection('products')
-      .where('visibility', '==', 'published')
-      .limit(50)
-      .get()
+    const [productSnap, catSnap] = await Promise.all([
+      adminDb.collection('products').where('visibility', '==', 'published').limit(50).get(),
+      adminDb.collection('categories').orderBy('order', 'asc').limit(20).get(),
+    ])
 
-    const dbProducts = snapshot.docs.map(doc => {
+    const dbProducts = productSnap.docs.map(doc => {
       const data = doc.data()
+      const { createdAt, updatedAt, ...rest } = data;
       return { 
         id: doc.id, 
-        ...data,
-        createdAt: data.createdAt?.toDate?.() || data.createdAt,
-        updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
+        ...rest,
+        createdAt: createdAt?.toDate ? createdAt.toDate().toISOString() : typeof createdAt === 'string' ? createdAt : undefined,
+        updatedAt: updatedAt?.toDate ? updatedAt.toDate().toISOString() : typeof updatedAt === 'string' ? updatedAt : undefined,
       } as unknown as Product
     })
 
-    if (dbProducts.length === 0) {
-      return staticProducts;
-    }
+    const categories: StorefrontCategory[] = catSnap.docs.map(doc => ({
+      id: doc.id,
+      name: doc.data().name,
+      slug: doc.data().slug,
+      image: doc.data().image,
+      blurb: doc.data().blurb,
+    }))
 
-    // Gracefully merge DB products with static products without duplicate slugs
-    const existingSlugs = new Set(dbProducts.map((p) => p.slug));
-    const merged = [...dbProducts];
-    for (const p of staticProducts) {
-      if (!existingSlugs.has(p.slug)) {
-        merged.push(p);
-      }
-    }
-    return merged;
+    const products = dbProducts.length === 0 ? staticProducts : (() => {
+      const existingSlugs = new Set(dbProducts.map((p) => p.slug));
+      const merged = [...dbProducts];
+      for (const p of staticProducts) { if (!existingSlugs.has(p.slug)) merged.push(p); }
+      return merged;
+    })()
+
+    return { products, categories: categories.length > 0 ? categories : STATIC_CATEGORIES }
   } catch (error) {
-    console.error("Failed to fetch products for home page, falling back to static catalog:", error)
-    return staticProducts
+    console.error("Failed to fetch home data, using static fallback:", error)
+    return { products: staticProducts, categories: STATIC_CATEGORIES }
   }
 }
 
 export const revalidate = 60; // Revalidate every minute
 
 export default async function HomePage() {
-  const products = await getProducts();
+  const { products, categories } = await getHomeData();
   
   // Group products for different sections
   const newArrivals = products.filter((p) => p.isNew).slice(0, 8);
@@ -182,74 +194,55 @@ export default async function HomePage() {
         </Reveal>
 
         <Reveal stagger className="mt-8 grid grid-cols-1 md:grid-cols-12 grid-rows-[auto] gap-4 md:gap-6 min-h-[600px]">
-          {/* Main Men's Banner - Takes up 8 columns */}
-          <Link
-            href="/shop/mens"
-            className="group relative block overflow-hidden bg-ink md:col-span-8 md:row-span-2 rounded-2xl min-h-[300px] md:min-h-full"
-          >
-            <Image
-              src="/images/banner.jpg"
-              alt="Shop Men"
-              fill
-              sizes="(max-width: 768px) 100vw, 66vw"
-              className="object-cover transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 opacity-80"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent transition-opacity duration-500 group-hover:opacity-80" />
-            <div className="absolute inset-x-0 bottom-0 p-8 md:p-12 text-paper flex flex-col justify-end">
-              <span className="eyebrow text-white/70 mb-2">Built for the commute</span>
-              <h3 className="display text-3xl md:text-5xl mb-2">Men's Collection</h3>
-              <p className="text-white/80 text-[15px] max-w-sm mb-8 hidden md:block">
-                Grip, cushioning and a sole that survives Colombo pavements. Discover our flagship running and lifestyle shoes.
-              </p>
-              <span className="btn bg-paper text-ink group-hover:bg-mist-2 self-start transition-colors">
-                Shop Men &rarr;
-              </span>
-            </div>
-          </Link>
+          {categories.length >= 1 && (
+            <Link
+              href={`/shop/${categories[0]!.slug}`}
+              className="group relative block overflow-hidden bg-ink md:col-span-8 md:row-span-2 rounded-2xl min-h-[300px] md:min-h-full"
+            >
+              <Image
+                src={categories[0]!.image || '/images/banner.jpg'}
+                alt={`Shop ${categories[0]!.name}`}
+                fill
+                sizes="(max-width: 768px) 100vw, 66vw"
+                className="object-cover transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 opacity-80"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent transition-opacity duration-500 group-hover:opacity-80" />
+              <div className="absolute inset-x-0 bottom-0 p-8 md:p-12 text-paper flex flex-col justify-end">
+                <span className="eyebrow text-white/70 mb-2">Explore</span>
+                <h3 className="display text-3xl md:text-5xl mb-2">{categories[0]!.name}</h3>
+                {categories[0]!.blurb && (
+                  <p className="text-white/80 text-[15px] max-w-sm mb-8 hidden md:block">{categories[0]!.blurb}</p>
+                )}
+                <span className="btn bg-paper text-ink group-hover:bg-mist-2 self-start transition-colors">
+                  Shop {categories[0]!.name} &rarr;
+                </span>
+              </div>
+            </Link>
+          )}
 
-          {/* Women's Tile - 4 columns */}
-          <Link
-            href="/shop/womens"
-            className="group relative block overflow-hidden bg-mist md:col-span-4 rounded-2xl min-h-[250px] md:min-h-[288px]"
-          >
-            <Image
-              src="/images/p4.jpg"
-              alt="Shop Women"
-              fill
-              sizes="(max-width: 768px) 100vw, 33vw"
-              className="object-cover transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/20 to-transparent transition-opacity duration-500 group-hover:opacity-90" />
-            <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 text-paper flex flex-col justify-end">
-              <h3 className="display text-2xl md:text-3xl mb-1">Women's</h3>
-              <p className="text-white/80 text-sm mb-6">Court, casual and slides</p>
-              <span className="btn btn-outline text-paper border-white/30 group-hover:border-white group-hover:bg-white group-hover:text-ink self-start transition-all px-5 py-2.5 text-sm">
-                Shop Women
-              </span>
-            </div>
-          </Link>
-
-          {/* Kids' Tile - 4 columns */}
-          <Link
-            href="/shop/kids"
-            className="group relative block overflow-hidden bg-mist md:col-span-4 rounded-2xl min-h-[250px] md:min-h-[288px]"
-          >
-            <Image
-              src="/images/p6.jpg"
-              alt="Shop Kids"
-              fill
-              sizes="(max-width: 768px) 100vw, 33vw"
-              className="object-cover transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/20 to-transparent transition-opacity duration-500 group-hover:opacity-90" />
-            <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 text-paper flex flex-col justify-end">
-              <h3 className="display text-2xl md:text-3xl mb-1">Kids'</h3>
-              <p className="text-white/80 text-sm mb-6">School-ready and play-proof</p>
-              <span className="btn btn-outline text-paper border-white/30 group-hover:border-white group-hover:bg-white group-hover:text-ink self-start transition-all px-5 py-2.5 text-sm">
-                Shop Kids
-              </span>
-            </div>
-          </Link>
+          {categories.slice(1, 3).map((cat) => (
+            <Link
+              key={cat.id}
+              href={`/shop/${cat.slug}`}
+              className="group relative block overflow-hidden bg-mist md:col-span-4 rounded-2xl min-h-[250px] md:min-h-[288px]"
+            >
+              <Image
+                src={cat.image || '/images/p4.jpg'}
+                alt={`Shop ${cat.name}`}
+                fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                className="object-cover transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/20 to-transparent transition-opacity duration-500 group-hover:opacity-90" />
+              <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 text-paper flex flex-col justify-end">
+                <h3 className="display text-2xl md:text-3xl mb-1">{cat.name}</h3>
+                {cat.blurb && <p className="text-white/80 text-sm mb-6">{cat.blurb}</p>}
+                <span className="btn btn-outline text-paper border-white/30 group-hover:border-white group-hover:bg-white group-hover:text-ink self-start transition-all px-5 py-2.5 text-sm">
+                  Shop {cat.name}
+                </span>
+              </div>
+            </Link>
+          ))}
         </Reveal>
       </section>
 

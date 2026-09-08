@@ -377,7 +377,7 @@ export default function CheckoutForm() {
               <dd>{LKR(subtotal)}</dd>
             </div>
             {appliedDiscount && (
-              <div className="flex justify-between text-[#4CAF7D]">
+              <div className="flex justify-between text-[#D4CBBF]">
                 <dt>Discount ({appliedDiscount.code})</dt>
                 <dd>-{LKR(appliedDiscount.amount)}</dd>
               </div>

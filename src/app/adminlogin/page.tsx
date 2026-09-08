@@ -76,13 +76,6 @@ export default function AdminLoginPage() {
     }
   }
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#0B0B0B] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#F7F4EE] animate-spin" />
-      </div>
-    )
-  }
 
   return (
     <div

@@ -46,7 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Safety fallback: ensure loading never hangs indefinitely if Firebase auth network is slow
+    const fallbackTimer = setTimeout(() => {
+      setLoading(false)
+    }, 400)
+
     const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
+      clearTimeout(fallbackTimer)
       if (firebaseUser) {
         const localAvatar = typeof window !== 'undefined'
           ? localStorage.getItem(`newstep.avatar.${firebaseUser.uid}`)
@@ -77,7 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    return () => unsubscribe()
+    return () => {
+      clearTimeout(fallbackTimer)
+      unsubscribe()
+    }
   }, [])
 
   const hasPermission = useCallback(

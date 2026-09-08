@@ -1,7 +1,14 @@
+export type ColourVariant = {
+  colour: string
+  sku: string
+  stockQty: number
+}
+
 export type Variant = {
   size: number; // EU
-  sku: string;
-  stockQty: number;
+  colours?: ColourVariant[]  // per-colour stock per size
+  sku?: string;              // legacy
+  stockQty?: number;         // legacy
 };
 
 export type Product = {
@@ -22,6 +29,8 @@ export type Product = {
   variants: Variant[];
   isNew?: boolean;
   isBestseller?: boolean;
+  isFeatured?: boolean;
+  featuredOrder?: number;
   rating?: number;
   reviewCount?: number;
 };

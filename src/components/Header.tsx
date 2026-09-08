@@ -175,21 +175,48 @@ export default function Header() {
 
           {/* Search Trigger, Cart, and User Profile Avatar (right-most) */}
           <div className="flex items-center gap-1 sm:gap-1.5">
-            {/* Desktop Quick Search Bar Input Trigger */}
-            <button
-              onClick={() => setSearchOpen(true)}
+            {/* Desktop Quick Search Bar Input */}
+            <div
               className="hidden md:flex items-center gap-2 rounded-full border border-line bg-mist/60 px-3.5 py-1.5 text-sm text-muted hover:border-ink/40 hover:bg-mist transition-all w-44 lg:w-56 text-left mr-1"
-              aria-label="Open search"
+              aria-label="Search"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-muted">
                 <circle cx="11" cy="11" r="7" />
                 <path d="m20 20-3.5-3.5" strokeLinecap="round" />
               </svg>
-              <span className="truncate flex-1 text-xs">Search shoes...</span>
+              <input
+                type="search"
+                placeholder="Search shoes..."
+                value={query}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setQuery(val);
+                  if (pathname.startsWith("/shop")) {
+                    window.dispatchEvent(new CustomEvent("shop:search", { detail: val }));
+                    router.push(val ? `/shop?q=${encodeURIComponent(val)}` : "/shop", { scroll: false });
+                  }
+                }}
+                onFocus={() => {
+                  if (!pathname.startsWith("/shop")) {
+                    setSearchOpen(true);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (query.trim()) {
+                      setSearchOpen(false);
+                      router.push(`/shop?q=${encodeURIComponent(query.trim())}`);
+                    }
+                  }
+                }}
+                className="truncate flex-1 text-xs bg-transparent border-none outline-none text-ink placeholder:text-muted w-full"
+                aria-label="Search shoes"
+              />
               <kbd className="hidden lg:inline-block rounded bg-paper px-1.5 py-0.5 text-[10px] font-mono border border-line text-muted">
                 /
               </kbd>
-            </button>
+            </div>
 
             {/* Mobile / Tablet search icon button */}
             <button
@@ -203,9 +230,13 @@ export default function Header() {
               </svg>
             </button>
 
-            {/* 1. Shopping Cart Button (before profile avatar) */}
-            <button
-              onClick={openDrawer}
+            {/* 1. Shopping Cart Link / Button (before profile avatar) */}
+            <Link
+              href="/cart"
+              onClick={(e) => {
+                e.preventDefault();
+                openDrawer();
+              }}
               aria-label={`Cart, ${count} items`}
               className="relative rounded-full p-2 hover:bg-mist text-ink transition-colors flex items-center justify-center"
             >
@@ -218,7 +249,7 @@ export default function Header() {
                   {count}
                 </span>
               )}
-            </button>
+            </Link>
 
             {/* 2. Customer Profile Avatar Dropdown (Right-Most, matching cart icon size) */}
             <div className="relative" ref={accountDropdownRef}>
@@ -346,16 +377,13 @@ export default function Header() {
       </header>
 
       {/* Interactive Search Modal / Overlay */}
-      <div
-        className={`fixed inset-0 z-[80] ${searchOpen ? "" : "pointer-events-none"}`}
-        aria-hidden={!searchOpen}
-      >
-        {/* Backdrop */}
-        <div
-          onClick={() => setSearchOpen(false)}
-          className={`absolute inset-0 bg-ink/50 backdrop-blur-sm transition-opacity duration-300 ${searchOpen ? "opacity-100" : "opacity-0"
-            }`}
-        />
+      {searchOpen && (
+        <div className="fixed inset-0 z-[80]">
+          {/* Backdrop */}
+          <div
+            onClick={() => setSearchOpen(false)}
+            className="absolute inset-0 bg-ink/50 backdrop-blur-sm transition-opacity duration-300 opacity-100"
+          />
 
         {/* Search Dialog */}
         <div
@@ -533,6 +561,7 @@ export default function Header() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Mobile navigation drawer */}
       <div

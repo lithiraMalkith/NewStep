@@ -86,13 +86,23 @@ export default function ReviewSection({ productId }: { productId: string }) {
       ]);
 
       if (reviewsRes.ok) {
-        const reviewsData = await reviewsRes.json().catch(() => null);
-        if (reviewsData?.success) setReviews(reviewsData.data || []);
+        try {
+          const text = await reviewsRes.text();
+          const reviewsData = text && text.trim() ? JSON.parse(text) : null;
+          if (reviewsData?.success) setReviews(reviewsData.data || []);
+        } catch {
+          // ignore aborted or empty body
+        }
       }
 
       if (statsRes.ok) {
-        const statsData = await statsRes.json().catch(() => null);
-        if (statsData?.success) setStats(statsData.data);
+        try {
+          const text = await statsRes.text();
+          const statsData = text && text.trim() ? JSON.parse(text) : null;
+          if (statsData?.success) setStats(statsData.data);
+        } catch {
+          // ignore aborted or empty body
+        }
       }
     } catch (err) {
       console.error("Failed to load reviews:", err);

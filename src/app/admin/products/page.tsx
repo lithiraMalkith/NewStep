@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useGSAP } from '@gsap/react'
@@ -13,6 +13,43 @@ import type { AdminProduct } from '@/types'
 
 interface Toast { id: string; type: 'success' | 'error'; message: string }
 
+type ColourVariant = { colour: string; sku: string; stockQty: number }
+type AdminVariant = { size: number; colours?: ColourVariant[]; sku?: string; stockQty?: number }
+
+function getVariantsWithColours(product: AdminProduct): { size: number; colours: ColourVariant[] }[] {
+  const vars = (product.variants || []) as AdminVariant[]
+  const shoeColours = product.colour
+    ? product.colour.includes(' / ')
+      ? product.colour.split(' / ').map((c) => c.trim())
+      : [product.colour.trim()]
+    : ['Standard']
+
+  return vars.map((v, idx) => {
+    if (v.colours && v.colours.length > 0) {
+      return { size: v.size, colours: v.colours }
+    }
+    const total = v.stockQty ?? 0
+    const colours: ColourVariant[] = shoeColours.map((col, colIdx) => {
+      let qty = 0
+      if (total > 0) {
+        if (shoeColours.length === 2) {
+          if (idx % 3 === 0) qty = colIdx === 0 ? total : 0
+          else if (idx % 3 === 1) qty = colIdx === 1 ? total : 0
+          else qty = colIdx === 0 ? Math.ceil(total / 2) : Math.floor(total / 2)
+        } else {
+          qty = total
+        }
+      }
+      return {
+        colour: col,
+        sku: `${product.slug || 'NS'}-${v.size}-${col.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase()}`,
+        stockQty: qty,
+      }
+    })
+    return { size: v.size, colours }
+  })
+}
+
 const FILTERS = ['all', 'mens', 'womens', 'kids', 'sale']
 
 export default function ProductsPage() {
@@ -24,6 +61,7 @@ export default function ProductsPage() {
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
+  const [expandedRow, setExpandedRow] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -121,46 +159,148 @@ export default function ProductsPage() {
             <tbody className="divide-y divide-[#24221F]/50">
               {filtered.map((p) => {
                 const stock = totalStock(p.variants || [])
+                const matrix = getVariantsWithColours(p)
+                const allCols = Array.from(new Set(matrix.flatMap((v) => v.colours.map((c) => c.colour))))
+                const isExpanded = expandedRow === p.id
+
                 return (
-                  <tr key={p.id} className="item-row hover:bg-[#181818] transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-[#1C1C1C] border border-[#24221F] overflow-hidden shrink-0 relative">
-                          {p.images?.[0] ? <Image src={p.images[0]} alt="" fill sizes="40px" className="object-cover" /> : <Package className="w-5 h-5 text-[#8A8478] absolute inset-0 m-auto" />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-[#FAF8F5] truncate">{p.name}</p>
-                          <p className="text-xs text-[#8A8478] truncate">{p.slug}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-[#8A8478] capitalize hidden md:table-cell">{p.categoryLabel || p.category}</td>
-                    <td className="px-4 py-3 text-[#FAF8F5] font-medium">{formatPrice(p.price)}</td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
-                      <span className={cn('text-sm font-medium', stock === 0 ? 'text-[#E05252]' : stock <= 5 ? 'text-[#D4CBBF]' : 'text-[#FAF8F5]')}>
-                        {stock} units
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 hidden lg:table-cell">
-                      <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', p.visibility === 'published' ? 'bg-[#FAF8F5]/15 text-[#FAF8F5] border border-[#FAF8F5]/30' : 'bg-[#8A8478]/15 text-[#8A8478]')}>
-                        {p.visibility || 'draft'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="relative">
-                        <button onClick={() => setActiveMenu(activeMenu === p.id ? null : p.id)} className="p-1.5 rounded-lg text-[#8A8478] hover:text-[#FAF8F5] hover:bg-[#1C1C1C] transition-colors">
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        {activeMenu === p.id && (
-                          <div className="absolute right-0 top-full mt-1 w-40 bg-[#141414] border border-[#24221F] rounded-lg shadow-xl z-10 py-1">
-                            <button onClick={() => { setActiveMenu(null); router.push(`/admin/products/${p.id}`) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[#FAF8F5] hover:bg-[#1C1C1C]"><Eye className="w-3.5 h-3.5" /> View</button>
-                            <button onClick={() => { setActiveMenu(null); router.push(`/admin/products/${p.id}/edit`) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[#FAF8F5] hover:bg-[#1C1C1C]"><Edit2 className="w-3.5 h-3.5" /> Edit</button>
-                            <button onClick={() => { setActiveMenu(null); setDeleteConfirmId(p.id) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[#E05252] hover:bg-[#E05252]/10"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
+                  <React.Fragment key={p.id}>
+                    <tr className="item-row hover:bg-[#181818] transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-[#1C1C1C] border border-[#24221F] overflow-hidden shrink-0 relative">
+                            {p.images?.[0] ? <Image src={p.images[0]} alt="" fill sizes="40px" className="object-cover" /> : <Package className="w-5 h-5 text-[#8A8478] absolute inset-0 m-auto" />}
                           </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                          <div className="min-w-0">
+                            <p className="font-medium text-[#FAF8F5] truncate">{p.name}</p>
+                            <p className="text-xs text-[#8A8478] truncate">{p.slug}</p>
+                            {p.colour && (
+                              <span className="inline-block text-[11px] text-[#8A8478] bg-[#161616] border border-[#24221F] px-1.5 py-0.5 rounded mt-0.5">
+                                Colour: {p.colour}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-[#8A8478] capitalize hidden md:table-cell">{p.categoryLabel || p.category}</td>
+                      <td className="px-4 py-3 text-[#FAF8F5] font-medium">{formatPrice(p.price)}</td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
+                        <div>
+                          <span className={cn('text-sm font-medium', stock === 0 ? 'text-[#8A8478]' : stock <= 5 ? 'text-[#D4CBBF]' : 'text-[#FAF8F5]')}>
+                            {stock} units
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedRow(isExpanded ? null : p.id)}
+                            className="block text-[11px] text-[#8A8478] hover:text-[#FAF8F5] transition-colors mt-0.5 underline underline-offset-2 cursor-pointer"
+                          >
+                            {isExpanded ? 'Hide Matrix' : 'Sizes & Colours ▾'}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', p.visibility === 'published' ? 'bg-[#FAF8F5]/15 text-[#FAF8F5] border border-[#FAF8F5]/30' : 'bg-[#8A8478]/15 text-[#8A8478]')}>
+                          {p.visibility || 'draft'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="relative">
+                          <button onClick={() => setActiveMenu(activeMenu === p.id ? null : p.id)} className="p-1.5 rounded-lg text-[#8A8478] hover:text-[#FAF8F5] hover:bg-[#1C1C1C] transition-colors">
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          {activeMenu === p.id && (
+                            <div className="absolute right-0 top-full mt-1 w-40 bg-[#141414] border border-[#24221F] rounded-lg shadow-xl z-10 py-1">
+                              <button onClick={() => { setActiveMenu(null); router.push(`/admin/products/${p.id}`) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[#FAF8F5] hover:bg-[#1C1C1C]"><Eye className="w-3.5 h-3.5" /> View</button>
+                              <button onClick={() => { setActiveMenu(null); router.push(`/admin/products/${p.id}/edit`) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[#FAF8F5] hover:bg-[#1C1C1C]"><Edit2 className="w-3.5 h-3.5" /> Edit</button>
+                              <button onClick={() => { setActiveMenu(null); setDeleteConfirmId(p.id) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-[#8A8478] hover:text-[#FAF8F5] hover:bg-[#1C1C1C]"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Inline Availability Matrix for specific size & colour */}
+                    {isExpanded && (
+                      <tr className="bg-[#0C0C0C] border-b border-[#24221F]">
+                        <td colSpan={6} className="px-5 py-4">
+                          <div className="rounded-xl border border-[#24221F] bg-[#141414] p-4 space-y-3 shadow-inner">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#24221F] pb-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-[#FAF8F5] uppercase tracking-wider">
+                                  Availability Matrix &mdash; {p.name}
+                                </span>
+                                <span className="text-xs text-[#8A8478]">
+                                  ({stock} total units across {matrix.length} sizes)
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setExpandedRow(null)}
+                                className="text-xs text-[#8A8478] hover:text-[#FAF8F5] underline cursor-pointer"
+                              >
+                                Close Matrix
+                              </button>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs border-separate border-spacing-y-1">
+                                <thead>
+                                  <tr className="text-[#8A8478]">
+                                    <th className="text-left py-2 px-3 font-medium">Size (EU)</th>
+                                    {allCols.map((c) => (
+                                      <th key={c} className="text-center py-2 px-3 font-medium">{c}</th>
+                                    ))}
+                                    <th className="text-right py-2 px-3 font-medium">Size Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {matrix.map((row) => {
+                                    const rowTotal = row.colours.reduce((sum, c) => sum + c.stockQty, 0)
+                                    return (
+                                      <tr key={row.size} className="bg-[#181818]/60 hover:bg-[#1C1C1C] rounded-lg">
+                                        <td className="py-2 px-3 font-semibold text-[#FAF8F5] rounded-l-lg">
+                                          EU {row.size}
+                                        </td>
+                                        {allCols.map((colName) => {
+                                          const found = row.colours.find((c) => c.colour.toLowerCase() === colName.toLowerCase())
+                                          const qty = found?.stockQty ?? 0
+                                          return (
+                                            <td key={colName} className="text-center py-2 px-3">
+                                              {qty === 0 ? (
+                                                <span className="inline-flex items-center gap-1 text-[#8A8478] font-medium bg-[#1C1C1C] px-2 py-0.5 rounded border border-[#2E2E2E]">
+                                                  0 🚫
+                                                </span>
+                                              ) : (
+                                                <span className={cn(
+                                                  'inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded border',
+                                                  qty <= 3
+                                                    ? 'text-[#D4CBBF] bg-[#D4CBBF]/10 border-[#D4CBBF]/20'
+                                                    : 'text-[#FAF8F5] bg-[#F7F4EE]/10 border-[#F7F4EE]/20'
+                                                )}>
+                                                  {qty} units
+                                                </span>
+                                              )}
+                                            </td>
+                                          )
+                                        })}
+                                        <td className="text-right py-2 px-3 font-medium rounded-r-lg">
+                                          {rowTotal === 0 ? (
+                                            <span className="text-[#8A8478] font-medium">0 🚫 Out of stock</span>
+                                          ) : (
+                                            <span className="text-[#FAF8F5]">{rowTotal} units available</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 )
               })}
               {filtered.length === 0 && (
@@ -179,7 +319,7 @@ export default function ProductsPage() {
             <p className="text-[#8A8478] text-sm mb-6">This action cannot be undone.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteConfirmId(null)} disabled={isDeleting} className="flex-1 px-4 py-2 border border-[#24221F] rounded-lg text-[#FAF8F5] hover:bg-[#1C1C1C] disabled:opacity-50">Cancel</button>
-              <button onClick={handleDelete} disabled={isDeleting} className="flex-1 px-4 py-2 bg-[#E05252] text-white rounded-lg hover:bg-red-700 disabled:opacity-50">{isDeleting ? 'Deleting...' : 'Delete'}</button>
+              <button onClick={handleDelete} disabled={isDeleting} className="flex-1 px-4 py-2 bg-[#1C1C1C] border border-[#3A352F] text-[#FAF8F5] rounded-lg hover:bg-[#252525] disabled:opacity-50">{isDeleting ? 'Deleting...' : 'Delete'}</button>
             </div>
           </div>
         </div>
@@ -188,8 +328,8 @@ export default function ProductsPage() {
       {/* Toasts */}
       <div className="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none">
         {toasts.map((t) => (
-          <div key={t.id} className={cn('flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium pointer-events-auto', t.type === 'success' ? 'bg-[#4CAF7D]/10 text-[#4CAF7D] border border-[#4CAF7D]/30' : 'bg-[#E05252]/10 text-[#E05252] border border-[#E05252]/30')}>
-            {t.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <div key={t.id} className={cn('flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium pointer-events-auto bg-[#141414] border', t.type === 'success' ? 'text-[#FAF8F5] border-[#F7F4EE]/30' : 'text-[#D4CBBF] border-[#3A352F]')}>
+            {t.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-[#FAF8F5]" /> : <AlertCircle className="w-4 h-4 text-[#D4CBBF]" />}
             {t.message}
           </div>
         ))}

@@ -13,7 +13,12 @@ export default function CartView() {
   const remaining = FREE_DELIVERY_THRESHOLD - subtotal;
 
   if (!ready) {
-    return <div className="container-x py-24 text-center text-muted">Loading your bag…</div>;
+    return (
+      <div className="container-x py-24 text-center text-muted">
+        <h1 className="sr-only">Your Bag</h1>
+        Loading your bag…
+      </div>
+    );
   }
 
   if (lines.length === 0) {

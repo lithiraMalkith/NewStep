@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin'
 import { serializeDocs } from '@/lib/admin-service'
 import { productSchema } from '@/lib/validations'
 import { slugify, getAvailabilityStatus } from '@/lib/utils'
+import { logAudit } from '@/lib/audit'
 
 // GET /api/products — List all products
 export async function GET(req: NextRequest) {
@@ -59,6 +60,15 @@ export async function POST(req: NextRequest) {
       }
 
       const docRef = await adminDb.collection('products').add(productData)
+
+      logAudit({
+        userId: authedReq.user.uid,
+        userEmail: authedReq.user.email || '',
+        action: 'create',
+        resource: 'product',
+        resourceId: docRef.id,
+        resourceName: data.name,
+      })
 
       return NextResponse.json(
         {

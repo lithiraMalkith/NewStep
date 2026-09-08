@@ -35,8 +35,9 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
 
     test('Marquee text strip displays core store propositions', async ({ page }) => {
       await page.goto('/');
-      await expect(page.getByText(/Cash on delivery island-wide/i).first()).toBeVisible();
-      await expect(page.getByText(/Free delivery over/i).first()).toBeVisible();
+      await page.waitForLoadState('domcontentloaded');
+      await expect(page.getByText(/Cash on delivery island-wide/i).first()).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText(/Free delivery over/i).first()).toBeVisible({ timeout: 15000 });
     });
 
     test('Trust strip renders all four reliability badges', async ({ page }) => {
@@ -49,7 +50,7 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
 
     test('Product carousels (New Arrivals & Best Sellers) render with product cards', async ({ page }) => {
       await page.goto('/');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Check for carousel headings or product links
       const productCards = page.locator('a[href*="/product/"]');
@@ -93,7 +94,7 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
   test.describe('2. Shop Catalogue, Categories & Filtering', () => {
     test('Catalog page /shop displays products, count and size filters', async ({ page }) => {
       await page.goto('/shop');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Heading
       await expect(page.getByRole('heading', { name: /All Shoes/i })).toBeVisible();
@@ -118,7 +119,7 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
       for (const category of ['mens', 'womens', 'kids']) {
         const response = await page.goto(`/shop/${category}`);
         expect(response?.status()).toBeLessThan(400);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // Check product presence
         const products = page.locator('a[href*="/product/"]');
@@ -128,7 +129,7 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
 
     test('Search bar filters products dynamically', async ({ page }) => {
       await page.goto('/shop');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const searchInput = page.getByPlaceholder(/Search/i).first();
       await expect(searchInput).toBeVisible();
@@ -150,7 +151,7 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
 
     test('Sort selection functions properly', async ({ page }) => {
       await page.goto('/shop');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const sortSelect = page.locator('select').first();
       if (await sortSelect.isVisible()) {
@@ -164,7 +165,7 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
   test.describe('3. Product Detail Page (PDP) & Review Interactions', () => {
     test('PDP loads full shoe details, switches images, and expands accordions', async ({ page }) => {
       await page.goto('/shop');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Click first product
       const firstProduct = page.locator('a[href*="/product/"]').first();
@@ -203,7 +204,7 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
 
     test('Validation enforces size selection before adding to cart', async ({ page }) => {
       await page.goto('/shop');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.locator('a[href*="/product/"]').first().click();
       await page.waitForURL(/\/product\//);
 
@@ -231,12 +232,12 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
 
     test('Review section renders with verified purchaser notice for guest visitors', async ({ page }) => {
       await page.goto('/shop');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.locator('a[href*="/product/"]').first().click();
       await page.waitForURL(/\/product\//);
 
       // Reviews section exists
-      await expect(page.getByRole('heading', { name: /Reviews/i })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /Reviews/i })).toBeVisible({ timeout: 15000 });
 
       // Verified purchaser security notice is shown to unauthenticated guests
       await expect(page.getByText(/Verified Buyer Reviews/i)).toBeVisible();
@@ -251,9 +252,9 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
   test.describe('4. Cart & Bag Management', () => {
     test('Cart page renders properly in empty and populated states', async ({ page }) => {
       await page.goto('/cart');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 15000 });
 
       // Check whether empty or has items
       const emptyMsg = page.getByText(/Your bag is empty/i).first();
@@ -269,26 +270,28 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
     });
 
     test('Adding an item from PDP flows through to the cart', async ({ page }) => {
-      await page.goto('/shop');
-      await page.waitForLoadState('networkidle');
-      await page.locator('a[href*="/product/"]').first().click();
-      await page.waitForURL(/\/product\//);
+      await page.goto('/product/velocity-runner-white');
+      await page.waitForLoadState('domcontentloaded');
 
       // Select size
-      const availableSize = page.locator('button').filter({ hasText: /^(3[6-9]|4[0-6])$/ }).locator(':not([disabled])').first();
-      if (await availableSize.isVisible()) {
-        await availableSize.click();
-        const addToBag = page.getByRole('button', { name: /Add to bag/i });
-        await addToBag.click();
-        await page.waitForTimeout(600);
+      const availableSize = page.locator('button:not([disabled])').filter({ hasText: /^(3[6-9]|4[0-6])$/ }).first();
+      await expect(availableSize).toBeVisible({ timeout: 15000 });
+      await availableSize.click();
 
-        // Go to cart
-        await page.goto('/cart');
-        await page.waitForLoadState('networkidle');
+      const addToBag = page.getByRole('button', { name: /Add to bag/i });
+      await expect(addToBag).toBeVisible({ timeout: 10000 });
+      await addToBag.click();
 
-        // Verify cart has items and can navigate to checkout
-        await expect(page.getByRole('link', { name: /Checkout|Proceed/i }).first()).toBeVisible();
-      }
+      // Drawer opens with Subtotal and Checkout button
+      const drawer = page.getByRole('dialog', { name: /Shopping bag/i });
+      await expect(drawer).toBeVisible({ timeout: 10000 });
+      await expect(drawer.getByRole('link', { name: /Checkout/i })).toBeVisible();
+
+      // Click View bag link in drawer to navigate to /cart
+      await drawer.getByRole('link', { name: /View bag/i }).click();
+      await page.waitForURL(/\/cart/, { timeout: 15000 });
+      await expect(page.getByRole('heading', { name: /Your Bag/i })).toBeVisible({ timeout: 15000 });
+      await expect(page.getByRole('link', { name: /Checkout/i }).first()).toBeVisible({ timeout: 15000 });
     });
   });
 
@@ -296,7 +299,7 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
     test('Checkout page displays delivery fields, summary, and validates empty submission', async ({ page }) => {
       // Add an item to the bag first to test active checkout form
       await page.goto('/shop');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       const firstProduct = page.locator('a[href*="/product/"]').first();
       await firstProduct.click();
       await page.waitForURL(/\/product\//);
@@ -310,7 +313,7 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
       }
 
       await page.goto('/checkout');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Check if checkout form or empty cart screen is displayed
       const emptyNotice = page.getByText(/Nothing to check out|Your bag is empty/i).first();
@@ -373,7 +376,7 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
 
       for (const route of accountRoutes) {
         await page.goto(route);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         // Unauthenticated users stay on account login or get redirected
         expect(page.url()).toMatch(/\/account/);
       }

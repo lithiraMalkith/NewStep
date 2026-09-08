@@ -53,13 +53,18 @@ export function formatDate(date: Date | string | null | undefined): string {
   })
 }
 
-/** Calculate total stock across all variants */
-export function totalStock(variants: { stockQty: number }[]): number {
-  return variants.reduce((sum, v) => sum + v.stockQty, 0)
+/** Calculate total stock across all variants — supports colour variant and legacy flat models */
+export function totalStock(variants: { stockQty?: number; colours?: { stockQty: number }[] }[]): number {
+  return variants.reduce((sum, v) => {
+    if (v.colours && v.colours.length > 0) {
+      return sum + v.colours.reduce((s, c) => s + c.stockQty, 0)
+    }
+    return sum + (v.stockQty ?? 0)
+  }, 0)
 }
 
 /** Determine availability status from variants */
-export function getAvailabilityStatus(variants: { stockQty: number }[]): 'in_stock' | 'out_of_stock' | 'low_stock' {
+export function getAvailabilityStatus(variants: { stockQty?: number; colours?: { stockQty: number }[] }[]): 'in_stock' | 'out_of_stock' | 'low_stock' {
   const total = totalStock(variants)
   if (total === 0) return 'out_of_stock'
   if (total <= 5) return 'low_stock'

@@ -34,10 +34,17 @@ export interface CustomRole {
 export type VisibilityStatus = 'published' | 'draft'
 export type AvailabilityStatus = 'in_stock' | 'out_of_stock' | 'low_stock'
 
-export interface AdminVariant {
-  size: number
+export interface ColourVariant {
+  colour: string
   sku: string
   stockQty: number
+}
+
+export interface AdminVariant {
+  size: number
+  colours: ColourVariant[]   // per-colour stock per size
+  sku?: string               // legacy single-colour fallback
+  stockQty?: number          // legacy single-colour fallback
 }
 
 export interface AdminProduct {
@@ -60,6 +67,10 @@ export interface AdminProduct {
   availabilityStatus: AvailabilityStatus
   visibility: VisibilityStatus
   isNew: boolean
+  isFeatured?: boolean
+  featuredOrder?: number
+  featuredBadge?: string
+  isBestseller?: boolean
   rating: number
   reviewCount: number
   createdAt: Date
@@ -304,4 +315,22 @@ export interface PaginatedResult<T> {
   page: number
   pageSize: number
   hasMore: boolean
+}
+
+// ─── Audit Log ───
+
+export type AuditAction = 'create' | 'update' | 'delete' | 'login' | 'export' | 'feature' | 'unfeature'
+export type AuditResource = 'product' | 'order' | 'user' | 'category' | 'discount' | 'review' | 'settings' | 'featured'
+
+export interface AuditLog {
+  id: string
+  userId: string
+  userEmail: string
+  action: AuditAction
+  resource: AuditResource
+  resourceId?: string
+  resourceName?: string
+  details?: string
+  ip?: string
+  createdAt: Date
 }

@@ -27,6 +27,8 @@ import {
   BarChart3,
   Tag,
   ExternalLink,
+  Sparkles,
+  ClipboardList,
 } from 'lucide-react'
 import AdminNotifications from './AdminNotifications'
 
@@ -40,6 +42,7 @@ interface SidebarItem {
 const SIDEBAR_ITEMS: SidebarItem[] = [
   { label: 'Dashboard', href: '/admin', permission: 'dashboard:read', icon: <LayoutDashboard className="w-5 h-5" /> },
   { label: 'Product Catalog', href: '/admin/products', permission: 'products:read', icon: <Package className="w-5 h-5" /> },
+  { label: 'Featured Products', href: '/admin/featured', permission: 'featured:read', icon: <Sparkles className="w-5 h-5" /> },
   { label: 'Categories', href: '/admin/categories', permission: 'categories:read', icon: <FolderTree className="w-5 h-5" /> },
   { label: 'Inventory', href: '/admin/inventory', permission: 'inventory:read', icon: <Boxes className="w-5 h-5" /> },
   { label: 'Orders', href: '/admin/orders', permission: 'orders:read', icon: <ShoppingCart className="w-5 h-5" /> },
@@ -49,6 +52,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { label: 'Reports', href: '/admin/reports', permission: 'dashboard:read', icon: <BarChart3 className="w-5 h-5" /> },
   { label: 'Roles & Permissions', href: '/admin/roles', permission: 'roles:read', icon: <Shield className="w-5 h-5" /> },
   { label: 'Messages', href: '/admin/messages', permission: 'messages:read', icon: <MessageSquare className="w-5 h-5" /> },
+  { label: 'Audit Log', href: '/admin/audit', permission: 'audit:read', icon: <ClipboardList className="w-5 h-5" /> },
   { label: 'Settings', href: '/admin/settings', permission: 'settings:read', icon: <Settings className="w-5 h-5" /> },
 ]
 
@@ -75,7 +79,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/adminlogin')
+      router.replace('/adminlogin')
+      const timer = setTimeout(() => {
+        if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin') && !window.location.pathname.startsWith('/adminlogin')) {
+          window.location.replace('/adminlogin')
+        }
+      }, 400)
+      return () => clearTimeout(timer)
     }
   }, [user, loading, router])
 

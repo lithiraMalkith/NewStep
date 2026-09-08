@@ -162,7 +162,11 @@ export async function fetchInventory(token: string): Promise<AdminProduct[]> {
 export async function updateInventoryStock(
   token: string,
   productId: string,
-  variantUpdates: { size: number; stockQty: number }[]
+  variantUpdates: {
+    size: number
+    stockQty?: number
+    colours?: { colour: string; stockQty: number; sku?: string }[]
+  }[]
 ): Promise<{ id: string; message: string }> {
   return fetchApi<{ id: string; message: string }>(`/api/inventory/${productId}`, token, {
     method: 'PATCH',
@@ -368,6 +372,91 @@ export async function addToWishlist(
 
 export async function removeFromWishlist(token: string, id: string): Promise<{ id: string; message: string }> {
   return fetchApi<{ id: string; message: string }>(`/api/wishlist/${id}`, token, {
+    method: 'DELETE',
+  })
+}
+
+// ─── Featured Products ───
+
+export async function fetchFeaturedProducts(token: string): Promise<AdminProduct[]> {
+  return fetchApi<AdminProduct[]>('/api/featured', token)
+}
+
+export async function updateFeaturedProducts(
+  token: string,
+  featured: { id: string; featuredOrder: number; badge?: string }[]
+): Promise<{ message: string; count: number }> {
+  return fetchApi<{ message: string; count: number }>('/api/featured', token, {
+    method: 'PUT',
+    body: JSON.stringify({ featured }),
+  })
+}
+
+export async function addFeaturedProduct(
+  token: string,
+  payload: { id: string; featuredOrder?: number; badge?: string }
+): Promise<{ message: string; id: string }> {
+  return fetchApi<{ message: string; id: string }>('/api/featured', token, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function removeFeaturedProduct(
+  token: string,
+  id: string
+): Promise<{ message: string; id: string }> {
+  return fetchApi<{ message: string; id: string }>(`/api/featured?id=${id}`, token, {
+    method: 'DELETE',
+  })
+}
+
+// ─── Audit Log ───
+
+export async function fetchAuditLogs(
+  token: string,
+  params?: Record<string, string>
+): Promise<{ items: import('@/types').AuditLog[]; total: number; page: number; pageSize: number; hasMore: boolean }> {
+  const query = params ? '?' + new URLSearchParams(params).toString() : ''
+  return fetchApi<{ items: import('@/types').AuditLog[]; total: number; page: number; pageSize: number; hasMore: boolean }>(
+    `/api/audit${query}`,
+    token
+  )
+}
+
+export async function createAuditLog(
+  token: string,
+  payload: { action: string; resource: string; resourceName?: string; details?: string }
+): Promise<{ success: boolean; data: import('@/types').AuditLog }> {
+  return fetchApi<{ success: boolean; data: import('@/types').AuditLog }>('/api/audit', token, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function seedAuditLogs(
+  token: string,
+  count: number = 25
+): Promise<{ message: string; seeded: number }> {
+  return fetchApi<{ message: string; seeded: number }>('/api/audit', token, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'seed', count }),
+  })
+}
+
+export async function deleteAuditLog(
+  token: string,
+  id: string
+): Promise<{ message: string }> {
+  return fetchApi<{ message: string }>(`/api/audit?id=${id}`, token, {
+    method: 'DELETE',
+  })
+}
+
+export async function clearAuditLogs(
+  token: string
+): Promise<{ message: string; deleted: number }> {
+  return fetchApi<{ message: string; deleted: number }>('/api/audit?clearAll=true', token, {
     method: 'DELETE',
   })
 }

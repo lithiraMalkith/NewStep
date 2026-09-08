@@ -48,28 +48,109 @@ function Accordion({
 
 export default function ProductDetail({ product }: { product: Product }) {
   const { add } = useCart();
+
+  // Extract all distinct colours for this product
+  const allProductColours = Array.from(
+    new Set(
+      product.variants.flatMap((v) =>
+        v.colours && v.colours.length > 0
+          ? v.colours.map((c) => c.colour)
+          : product.colour.includes(" / ")
+            ? product.colour.split(" / ").map((c) => c.trim())
+            : [product.colour]
+      )
+    )
+  ).filter(Boolean);
+
+  const hasColourVariants = allProductColours.length > 0;
+
   const [size, setSize] = useState<number | null>(null);
+  const [selectedColour, setSelectedColour] = useState<string | null>(allProductColours[0] || null);
   const [active, setActive] = useState(0);
   const [error, setError] = useState(false);
-  const selected = product.variants.find((v) => v.size === size);
-  const soldOut = product.variants.every((v) => v.stockQty === 0);
+  const [colourError, setColourError] = useState(false);
+
+  // Selected size variant
+  const selectedVariant = product.variants.find((v) => v.size === size);
+
+  // Stock helper: variant stock in given colour
+  const getVariantStockForColour = (v: typeof product.variants[0], col: string | null): number => {
+    if (!col) {
+      if (v.colours && v.colours.length > 0) {
+        return v.colours.reduce((sum, c) => sum + c.stockQty, 0);
+      }
+      return v.stockQty ?? 0;
+    }
+    if (v.colours && v.colours.length > 0) {
+      const match = v.colours.find((c) => c.colour.toLowerCase() === col.toLowerCase());
+      return match ? match.stockQty : 0;
+    }
+    return v.stockQty ?? 0;
+  };
+
+  // Stock helper: colour stock in given size (or across all sizes if size is null)
+  const getColourStockForSize = (col: string, s: number | null): number => {
+    if (s !== null) {
+      const v = product.variants.find((item) => item.size === s);
+      if (!v) return 0;
+      return getVariantStockForColour(v, col);
+    }
+    return product.variants.reduce((sum, v) => sum + getVariantStockForColour(v, col), 0);
+  };
+
+  // Current stock for selected combo
+  const selectedStock = selectedVariant
+    ? getVariantStockForColour(selectedVariant, selectedColour)
+    : 0;
+
+  // Check if shoe is entirely sold out
+  const soldOut = product.variants.every(
+    (v) => getVariantStockForColour(v, null) === 0
+  );
+
+  // Customer selects size
+  const handleSizeSelect = (s: number) => {
+    setSize(s);
+    setError(false);
+    // If a colour was already selected, check if it's in stock for this new size
+    if (selectedColour && getColourStockForSize(selectedColour, s) === 0) {
+      // Pick first colour that IS in stock for this size, if any
+      const inStockCol = allProductColours.find((c) => getColourStockForSize(c, s) > 0);
+      setSelectedColour(inStockCol || null);
+    }
+  };
+
+  // Customer selects colour manually
+  const handleColourSelect = (c: string) => {
+    setSelectedColour(c);
+    setColourError(false);
+    // If a size was already selected, check if it's in stock for this new colour
+    if (size !== null) {
+      const currentVariant = product.variants.find((v) => v.size === size);
+      if (currentVariant && getVariantStockForColour(currentVariant, c) === 0) {
+        setSize(null);
+      }
+    }
+  };
 
   const onAdd = () => {
-    if (!selected) {
+    if (!selectedVariant) {
       setError(true);
       return;
     }
     setError(false);
+    setColourError(false);
+    const chosenColour = selectedColour || allProductColours[0] || product.colour;
     add({
       productId: product.id,
       slug: product.slug,
       name: product.name,
-      colour: product.colour,
+      colour: chosenColour,
       image: product.images[0]!,
-      size: selected.size,
+      size: selectedVariant.size,
       price: product.price,
       qty: 1,
-      maxQty: Math.min(selected.stockQty, 5),
+      maxQty: Math.min(selectedStock > 0 ? selectedStock : 1, 5),
     });
   };
 
@@ -136,53 +217,93 @@ export default function ProductDetail({ product }: { product: Product }) {
 
         <ClientProductRating productId={product.id} showText />
 
+        {/* Colour selector — customer can choose colour manually anytime */}
+        {hasColourVariants && (
+          <div className="mt-8">
+            <div className="flex items-center justify-between">
+              <span className="eyebrow">
+                Select colour {selectedColour ? `· ${selectedColour}` : ""}
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {allProductColours.map((c) => {
+                const stockInColour = getColourStockForSize(c, size);
+                const isColAvailable = stockInColour > 0;
+                const isActive = selectedColour === c;
+                return (
+                  <button
+                    key={c}
+                    disabled={!isColAvailable}
+                    onClick={() => handleColourSelect(c)}
+                    aria-pressed={isActive}
+                    className={`px-4 py-2 border text-sm transition-colors rounded ${
+                      !isColAvailable
+                        ? "cursor-not-allowed border-line text-muted/50"
+                        : isActive
+                          ? "border-ink bg-ink text-paper font-medium"
+                          : "border-line hover:border-ink"
+                    }`}
+                  >
+                    {!isColAvailable ? `🚫 ${c}` : c}
+                  </button>
+                );
+              })}
+            </div>
+            {colourError && <p className="mt-2 text-sm text-sale">Please select a colour.</p>}
+          </div>
+        )}
+
         {/* Size selector */}
-        <div className="mt-8">
+        <div className="mt-6">
           <div className="flex items-center justify-between">
-            <span className="eyebrow">Select size (EU)</span>
+            <span className="eyebrow">
+              Select size (EU) {size ? `· EU ${size}` : ""}
+            </span>
             <a href="#size-guide" className="text-sm underline underline-offset-4">
               Size guide
             </a>
           </div>
           <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-5">
             {product.variants.map((v) => {
-              const out = v.stockQty === 0;
+              const stockInSize = getVariantStockForColour(v, selectedColour);
+              const available = stockInSize > 0;
               const isActive = size === v.size;
               return (
                 <button
                   key={v.size}
-                  disabled={out}
-                  onClick={() => {
-                    setSize(v.size);
-                    setError(false);
-                  }}
+                  disabled={!available}
+                  onClick={() => handleSizeSelect(v.size)}
                   aria-pressed={isActive}
                   className={`relative border py-3 text-[15px] transition-colors ${
-                    out
-                      ? "cursor-not-allowed border-line text-muted/50 line-through"
+                    !available
+                      ? "cursor-not-allowed border-line text-muted/50"
                       : isActive
                         ? "border-ink bg-ink text-paper"
                         : "border-line hover:border-ink"
                   }`}
                 >
-                  {v.size}
+                  {!available ? "🚫" : v.size}
                 </button>
               );
             })}
           </div>
 
-          {error && (
-            <p className="mt-3 text-sm text-sale">Please select a size first.</p>
-          )}
-          {selected && selected.stockQty <= 3 && (
+          {error && <p className="mt-3 text-sm text-sale">Please select a size first.</p>}
+          {selectedVariant && selectedStock <= 3 && selectedStock > 0 && (
             <p className="mt-3 text-sm font-medium text-sale">
-              Only {selected.stockQty} left in EU {selected.size}
+              Only {selectedStock} left in EU {selectedVariant.size}
+              {selectedColour ? ` · ${selectedColour}` : ""}
             </p>
           )}
-          {selected && selected.stockQty > 3 && (
+          {selectedVariant && selectedStock > 3 && (
             <p className="mt-3 text-sm text-ink flex items-center gap-2">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-ink" />
-              In stock &mdash; ready to ship
+              In stock &mdash; ready to ship {selectedColour ? `(${selectedColour})` : ""}
+            </p>
+          )}
+          {!size && selectedColour && (
+            <p className="mt-2 text-xs text-muted">
+              Showing available EU sizes for {selectedColour}
             </p>
           )}
         </div>

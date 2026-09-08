@@ -3,6 +3,7 @@ import { withAuth, type AuthedRequest } from '@/lib/auth-middleware'
 import { adminDb } from '@/lib/firebase-admin'
 import { serializeDoc } from '@/lib/admin-service'
 import { getAvailabilityStatus } from '@/lib/utils'
+import { logAudit } from '@/lib/audit'
 
 // GET /api/products/:id
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -50,6 +51,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
       await docRef.update(updateData)
 
+      // Fire-and-forget audit log
+      logAudit({
+        userId: authedReq.user.uid,
+        userEmail: authedReq.user.email || '',
+        action: 'update',
+        resource: 'product',
+        resourceId: id,
+        resourceName: body.name || id,
+        details: `Updated product fields: ${Object.keys(body).filter(k => k !== 'updatedAt').join(', ')}`,
+      })
+
       return NextResponse.json({
         success: true,
         data: { id, message: 'Product updated successfully' },
@@ -63,7 +75,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 // DELETE /api/products/:id
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  return withAuth(req, async () => {
+  return withAuth(req, async (authedReq: AuthedRequest) => {
     try {
       const { id } = await params
       const docRef = adminDb.collection('products').doc(id)
@@ -73,7 +85,18 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         return NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 })
       }
 
+      const productName = doc.data()?.name || id
       await docRef.delete()
+
+      logAudit({
+        userId: authedReq.user.uid,
+        userEmail: authedReq.user.email || '',
+        action: 'delete',
+        resource: 'product',
+        resourceId: id,
+        resourceName: productName,
+      })
+
       return NextResponse.json({ success: true, data: { id, message: 'Product deleted' } })
     } catch (error) {
       console.error('DELETE /api/products/:id error:', error)

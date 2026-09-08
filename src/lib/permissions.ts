@@ -33,6 +33,11 @@ export const PERMISSIONS = {
   USERS_WRITE:       'users:write',
   SETTINGS_READ:     'settings:read',
   SETTINGS_WRITE:    'settings:write',
+  FEATURED_READ:     'featured:read',
+  FEATURED_WRITE:    'featured:write',
+  AUDIT_READ:        'audit:read',
+  AUDIT_WRITE:       'audit:write',
+  AUDIT_DELETE:      'audit:delete',
 } as const
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
@@ -58,6 +63,11 @@ export const BUILT_IN_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.REVIEWS_WRITE,
     PERMISSIONS.DISCOUNTS_READ,
     PERMISSIONS.DISCOUNTS_WRITE,
+    PERMISSIONS.FEATURED_READ,
+    PERMISSIONS.FEATURED_WRITE,
+    PERMISSIONS.AUDIT_READ,
+    PERMISSIONS.AUDIT_WRITE,
+    PERMISSIONS.AUDIT_DELETE,
   ],
 
   staff: [
@@ -151,5 +161,9 @@ export const PERMISSION_GROUPS = [
   {
     label: 'Settings',
     permissions: [PERMISSIONS.SETTINGS_READ, PERMISSIONS.SETTINGS_WRITE],
+  },
+  {
+    label: 'Audit Log',
+    permissions: [PERMISSIONS.AUDIT_READ, PERMISSIONS.AUDIT_WRITE, PERMISSIONS.AUDIT_DELETE],
   },
 ]

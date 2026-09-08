@@ -15,15 +15,21 @@ export default function ClientProductRating({
   useEffect(() => {
     let isMounted = true;
     fetch(`/api/reviews/stats?productId=${encodeURIComponent(productId)}`)
-      .then((res) => (res.ok ? res.json() : null))
+      .then(async (res) => {
+        if (!res.ok) return null;
+        try {
+          const text = await res.text();
+          return text && text.trim() ? JSON.parse(text) : null;
+        } catch {
+          return null;
+        }
+      })
       .then((data) => {
         if (isMounted && data?.success && data?.data && data.data.totalReviews > 0) {
           setStats(data.data);
         }
       })
-      .catch((err) => {
-        // Silently catch aborts / network blips
-      });
+      .catch(() => {});
 
     return () => {
       isMounted = false;

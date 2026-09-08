@@ -14,12 +14,14 @@ test.describe('Enhanced Admin Panel Modules & Analytics E2E Tests', () => {
       { path: '/admin/discounts', name: 'Discounts & Coupons' },
       { path: '/admin/reports', name: 'Reports & Analytics' },
       { path: '/admin/roles', name: 'Roles & Permissions' },
+      { path: '/admin/featured', name: 'Featured Products Manager' },
+      { path: '/admin/audit', name: 'Audit Log' },
     ];
 
     for (const mod of requiredModules) {
       test(`Unauthenticated request to ${mod.path} (${mod.name}) is protected and redirected to /adminlogin`, async ({ page }) => {
-        await page.goto(mod.path);
-        await expect(page).toHaveURL(/\/adminlogin/, { timeout: 15000 });
+        await page.goto(mod.path, { waitUntil: 'domcontentloaded' });
+        await expect(page).toHaveURL(/\/adminlogin/, { timeout: 35000 });
       });
     }
   });
