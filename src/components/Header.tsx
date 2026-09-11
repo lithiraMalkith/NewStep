@@ -3,20 +3,28 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useCart } from "./CartProvider";
-import { categories, products } from "@/lib/products";
+import { categories as staticCategories, products } from "@/lib/products";
 import { LKR } from "@/lib/format";
 
 import { useAuth } from "@/contexts/auth-context";
 
-const NAV = [
+// Static fallback nav — used if API call fails
+const STATIC_NAV = [
   { href: "/shop/mens", label: "Men" },
   { href: "/shop/womens", label: "Women" },
   { href: "/shop/kids", label: "Kids" },
   { href: "/shop/sale", label: "Sale" },
   { href: "/shop", label: "All Shoes" },
 ];
+
+interface NavCategory {
+  id: string;
+  name: string;
+  slug: string;
+  order: number;
+}
 
 const POPULAR_SEARCHES = [
   "Running",
@@ -35,10 +43,44 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [navItems, setNavItems] = useState(STATIC_NAV);
+  const [navCategories, setNavCategories] = useState<NavCategory[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const accountDropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Fetch dynamic navigation categories from admin panel
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchNav() {
+      try {
+        const res = await fetch('/api/storefront/navigation');
+        const json = await res.json();
+        if (!cancelled && json.success && json.data?.length > 0) {
+          const cats: NavCategory[] = json.data;
+          setNavCategories(cats);
+          // Build nav: dynamic categories + Sale + All Shoes
+          const dynamicLinks = cats.map((c) => ({
+            href: `/shop/${c.slug}`,
+            label: c.name,
+          }));
+          // Append Sale if not already in categories
+          const hasSale = cats.some((c) => c.slug === 'sale');
+          if (!hasSale) {
+            dynamicLinks.push({ href: '/shop/sale', label: 'Sale' });
+          }
+          // Always append All Shoes
+          dynamicLinks.push({ href: '/shop', label: 'All Shoes' });
+          setNavItems(dynamicLinks);
+        }
+      } catch {
+        // Keep static fallback — navbar is never empty
+      }
+    }
+    fetchNav();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     setOpen(false);
@@ -161,7 +203,7 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden items-center gap-7 lg:flex">
-            {NAV.map((n) => (
+            {navItems.map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
@@ -457,7 +499,7 @@ export default function Header() {
                 <div className="mt-6 border-t border-line pt-4">
                   <p className="eyebrow text-xs text-muted mb-3">Browse Categories</p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {categories.map((c) => (
+                    {(navCategories.length > 0 ? navCategories : staticCategories).map((c) => (
                       <Link
                         key={c.slug}
                         href={`/shop/${c.slug}`}
@@ -465,7 +507,7 @@ export default function Header() {
                         className="rounded-lg border border-line p-3 hover:border-ink hover:bg-mist transition-all group"
                       >
                         <p className="font-medium text-sm text-ink group-hover:underline">{c.name}</p>
-                        <p className="text-[11px] text-muted truncate">{c.blurb}</p>
+                        {'blurb' in c && <p className="text-[11px] text-muted truncate">{(c as { blurb?: string }).blurb}</p>}
                       </Link>
                     ))}
                   </div>
@@ -606,13 +648,13 @@ export default function Header() {
           </div>
 
           <ul className="mt-6 space-y-1 overflow-y-auto flex-1">
-            {categories.map((c) => (
-              <li key={c.slug}>
+            {navItems.filter(n => n.href !== '/shop').map((n) => (
+              <li key={n.href}>
                 <Link
-                  href={`/shop/${c.slug}`}
+                  href={n.href}
                   className="display block py-2.5 text-2xl font-medium text-ink hover:text-muted transition-colors"
                 >
-                  {c.name}
+                  {n.label}
                 </Link>
               </li>
             ))}

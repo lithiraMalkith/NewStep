@@ -44,11 +44,16 @@ const REVIEWS = [
   },
 ];
 
-async function getHomeData(): Promise<{ products: Product[]; categories: StorefrontCategory[] }> {
+async function getHomeData(): Promise<{ products: Product[]; categories: StorefrontCategory[]; featuredProducts: Product[] }> {
   try {
-    const [productSnap, catSnap] = await Promise.all([
+    const [productSnap, catSnap, featuredSnap] = await Promise.all([
       adminDb.collection('products').where('visibility', '==', 'published').limit(50).get(),
       adminDb.collection('categories').orderBy('order', 'asc').limit(20).get(),
+      // Single-field query to avoid needing a composite Firestore index
+      adminDb.collection('products')
+        .where('isFeatured', '==', true)
+        .limit(50)
+        .get(),
     ])
 
     const dbProducts = productSnap.docs.map(doc => {
@@ -77,17 +82,63 @@ async function getHomeData(): Promise<{ products: Product[]; categories: Storefr
       return merged;
     })()
 
-    return { products, categories: categories.length > 0 ? categories : STATIC_CATEGORIES }
+    const featuredProducts: Product[] = featuredSnap.docs
+      .filter(doc => doc.data().visibility === 'published') // Filter in JS to avoid composite index
+      .sort((a, b) => (a.data().featuredOrder ?? 0) - (b.data().featuredOrder ?? 0))
+      .slice(0, 12)
+      .map(doc => {
+        const data = doc.data()
+        const { createdAt, updatedAt, ...rest } = data;
+        const match = products.find((p) => p.slug === data.slug || p.id === doc.id)
+          || staticProducts.find((p) => p.slug === data.slug || p.id === doc.id)
+
+        const variants = (data.variants && data.variants.length > 0)
+          ? data.variants
+          : (match?.variants || [])
+
+        const rawImages = (data.images && data.images.length > 0) ? data.images : (match?.images || ['/images/p1.jpg'])
+        const cleanImages = rawImages.map((img: string) => img === '/images/hero.jpg' ? '/images/p10.jpg' : img)
+
+        return { 
+          id: doc.id, 
+          slug: data.slug || match?.slug || '',
+          name: data.name || match?.name || '',
+          brand: data.brand || match?.brand || 'New Step',
+          subtitle: data.subtitle || match?.subtitle || '',
+          category: data.category || match?.category || 'mens',
+          categoryLabel: data.categoryLabel || match?.categoryLabel || "Men's",
+          colour: data.colour || match?.colour || 'Standard',
+          price: data.price || match?.price || 0,
+          compareAtPrice: data.compareAtPrice ?? match?.compareAtPrice,
+          isNew: data.isNew ?? match?.isNew ?? false,
+          isBestseller: data.isBestseller ?? match?.isBestseller ?? false,
+          rating: data.rating || match?.rating || 4.8,
+          reviewCount: data.reviewCount || match?.reviewCount || 10,
+          ...rest,
+          images: cleanImages,
+          variants,
+          details: data.details?.length ? data.details : (match?.details || []),
+          colourway: data.colourway?.length ? data.colourway : (match?.colourway || []),
+          createdAt: createdAt?.toDate ? createdAt.toDate().toISOString() : typeof createdAt === 'string' ? createdAt : undefined,
+          updatedAt: updatedAt?.toDate ? updatedAt.toDate().toISOString() : typeof updatedAt === 'string' ? updatedAt : undefined,
+        } as unknown as Product
+      })
+
+    const finalFeatured = featuredProducts.length > 0
+      ? featuredProducts
+      : products.filter((p) => p.isBestseller || p.isNew).slice(0, 8)
+
+    return { products, categories: categories.length > 0 ? categories : STATIC_CATEGORIES, featuredProducts: finalFeatured }
   } catch (error) {
     console.error("Failed to fetch home data, using static fallback:", error)
-    return { products: staticProducts, categories: STATIC_CATEGORIES }
+    return { products: staticProducts, categories: STATIC_CATEGORIES, featuredProducts: [] }
   }
 }
 
 export const revalidate = 60; // Revalidate every minute
 
 export default async function HomePage() {
-  const { products, categories } = await getHomeData();
+  const { products, categories, featuredProducts } = await getHomeData();
   
   // Group products for different sections
   const newArrivals = products.filter((p) => p.isNew).slice(0, 8);
@@ -131,6 +182,19 @@ export default async function HomePage() {
             <ProductCarousel 
               products={newArrivals} 
               title="New Arrivals" 
+              viewAllLink="/shop"
+            />
+          </Reveal>
+        </section>
+      )}
+
+      {/* Featured Products Carousel */}
+      {featuredProducts.length > 0 && (
+        <section className="container-x mt-8 mb-24">
+          <Reveal>
+            <ProductCarousel 
+              products={featuredProducts} 
+              title="Featured" 
               viewAllLink="/shop"
             />
           </Reveal>
@@ -204,7 +268,7 @@ export default async function HomePage() {
                 alt={`Shop ${categories[0]!.name}`}
                 fill
                 sizes="(max-width: 768px) 100vw, 66vw"
-                className="object-cover transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 opacity-80"
+                className="object-cover object-center md:object-[center_30%] transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 opacity-80"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent transition-opacity duration-500 group-hover:opacity-80" />
               <div className="absolute inset-x-0 bottom-0 p-8 md:p-12 text-paper flex flex-col justify-end">
@@ -231,7 +295,7 @@ export default async function HomePage() {
                 alt={`Shop ${cat.name}`}
                 fill
                 sizes="(max-width: 768px) 100vw, 33vw"
-                className="object-cover transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+                className="object-cover object-center transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/20 to-transparent transition-opacity duration-500 group-hover:opacity-90" />
               <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 text-paper flex flex-col justify-end">

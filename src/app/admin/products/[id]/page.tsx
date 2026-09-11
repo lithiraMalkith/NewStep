@@ -154,7 +154,7 @@ export default function ProductViewPage() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <a
-            href={`/shop/${product.category}/${product.slug}`}
+            href={`/product/${product.slug}`}
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-2 border border-[#24221F] text-[#8A8478] hover:text-[#FAF8F5] hover:bg-[#181818] rounded-lg text-xs transition-colors"
@@ -209,7 +209,19 @@ export default function ProductViewPage() {
             <h2 className="text-xs font-semibold text-[#8A8478] uppercase tracking-wider">Basic Information</h2>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-[#8A8478] block text-xs mb-0.5">Brand</span><span className="text-[#FAF8F5]">{product.brand || '—'}</span></div>
-              <div><span className="text-[#8A8478] block text-xs mb-0.5">Category</span><span className="text-[#FAF8F5] capitalize">{product.categoryLabel || product.category}</span></div>
+              <div>
+                <span className="text-[#8A8478] block text-xs mb-1">Categories</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {((product.categoryLabels && product.categoryLabels.length > 0)
+                    ? product.categoryLabels
+                    : [product.categoryLabel || product.category].filter(Boolean)
+                  ).map((cat, idx) => (
+                    <span key={idx} className="inline-block text-xs font-medium px-2 py-0.5 rounded bg-[#1C1C1C] border border-[#24221F] text-[#FAF8F5]">
+                      {cat}
+                    </span>
+                  ))}
+                </div>
+              </div>
               <div className="col-span-2"><span className="text-[#8A8478] block text-xs mb-1">Description</span><p className="text-[#FAF8F5] whitespace-pre-wrap text-sm">{product.description}</p></div>
               {product.subtitle && <div className="col-span-2"><span className="text-[#8A8478] block text-xs mb-0.5">Subtitle</span><p className="text-[#FAF8F5]">{product.subtitle}</p></div>}
             </div>

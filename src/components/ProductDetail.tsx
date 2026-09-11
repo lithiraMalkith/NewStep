@@ -52,12 +52,12 @@ export default function ProductDetail({ product }: { product: Product }) {
   // Extract all distinct colours for this product
   const allProductColours = Array.from(
     new Set(
-      product.variants.flatMap((v) =>
+      (product.variants || []).flatMap((v) =>
         v.colours && v.colours.length > 0
           ? v.colours.map((c) => c.colour)
-          : product.colour.includes(" / ")
+          : product.colour && product.colour.includes(" / ")
             ? product.colour.split(" / ").map((c) => c.trim())
-            : [product.colour]
+            : [product.colour || "Standard"]
       )
     )
   ).filter(Boolean);
@@ -161,8 +161,8 @@ export default function ProductDetail({ product }: { product: Product }) {
       <div>
         <div className="relative aspect-square overflow-hidden bg-mist">
           <Image
-            src={product.images[active]!}
-            alt={`${product.name} in ${product.colour}`}
+            src={(product.images && product.images[active]) || (product.images && product.images[0]) || "/brand-visuals/p1.jpg"}
+            alt={`${product.name} in ${product.colour || "Standard"}`}
             fill
             priority
             sizes="(max-width: 1024px) 100vw, 55vw"

@@ -16,7 +16,7 @@ const SLIDES = [
     body: "Real stock. Real sizes. Order in under a minute and pay cash when it reaches your door — anywhere in Sri Lanka.",
     cta1: { label: "Shop all shoes", href: "/shop" },
     cta2: { label: "View sale", href: "/shop/sale" },
-    position: "object-[70%_center]"
+    position: "object-[center_top] md:object-[70%_15%]"
   },
   {
     id: "slide-2",
@@ -26,7 +26,7 @@ const SLIDES = [
     body: "Grip, cushioning, and style that survives the city pavements. Discover our new men's arrivals.",
     cta1: { label: "Shop Men's", href: "/shop/mens" },
     cta2: { label: "Explore New", href: "/shop" },
-    position: "object-center"
+    position: "object-[center_top] md:object-[center_20%]"
   },
   {
     id: "slide-3",
@@ -36,7 +36,7 @@ const SLIDES = [
     body: "Final sizes, reduced prices. Grab your favorite styles before they are gone forever.",
     cta1: { label: "Shop Sale", href: "/shop/sale" },
     cta2: { label: "All Women's", href: "/shop/womens" },
-    position: "object-center"
+    position: "object-[center_top] md:object-[center_25%]"
   }
 ];
 
@@ -134,7 +134,7 @@ export default function Hero() {
   return (
     <section 
       ref={root} 
-      className="relative isolate overflow-hidden bg-ink text-paper min-h-[86svh] md:min-h-[88svh]"
+      className="relative isolate overflow-hidden bg-ink text-paper min-h-[80svh] md:min-h-[85svh]"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onTouchStart={() => setIsHovering(true)}
@@ -164,7 +164,7 @@ export default function Hero() {
       ))}
 
       {/* Content */}
-      <div className="container-x relative z-20 flex min-h-[86svh] flex-col justify-end pb-14 pt-24 md:min-h-[88svh] md:pb-20">
+      <div className="container-x relative z-20 flex min-h-[80svh] flex-col justify-end pb-14 pt-24 md:min-h-[85svh] md:pb-20">
         
         {SLIDES.map((slide, i) => (
           <div 

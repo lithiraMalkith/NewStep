@@ -15,6 +15,8 @@ export const productSchema = z.object({
   cost: z.number().min(0).nullable().optional(),
   category: z.string().min(1, 'Category is required'),
   categoryLabel: z.string().min(1, 'Category label is required'),
+  categories: z.array(z.string()).optional().default([]),
+  categoryLabels: z.array(z.string()).optional().default([]),
   details: z.array(z.string()).optional().default([]),
   variants: z.array(z.object({
     size: z.number(),

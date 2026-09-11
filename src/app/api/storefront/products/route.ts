@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
         brand: data.brand || 'New Step',
         category: data.category,
         categoryLabel: data.categoryLabel,
+        categories: data.categories || (data.category ? [data.category] : []),
+        categoryLabels: data.categoryLabels || (data.categoryLabel ? [data.categoryLabel] : []),
         subtitle: data.subtitle,
         colour: data.colour,
         colourway: data.colourway || [],
@@ -58,14 +60,10 @@ export async function GET(req: NextRequest) {
       .collection('products')
       .where('visibility', '==', 'published')
 
-    if (category && category !== 'all') {
-      query = query.where('category', '==', category)
-    }
-
     query = query.limit(limit)
     const snapshot = await query.get()
 
-    const products = snapshot.docs.map((doc) => {
+    let products = snapshot.docs.map((doc) => {
       const data = doc.data()
       return {
         id: doc.id,
@@ -74,6 +72,8 @@ export async function GET(req: NextRequest) {
         brand: data.brand || 'New Step',
         category: data.category,
         categoryLabel: data.categoryLabel,
+        categories: data.categories || (data.category ? [data.category] : []),
+        categoryLabels: data.categoryLabels || (data.categoryLabel ? [data.categoryLabel] : []),
         subtitle: data.subtitle,
         colour: data.colour,
         colourway: data.colourway || [],
@@ -89,6 +89,12 @@ export async function GET(req: NextRequest) {
         reviewCount: data.reviewCount || 0,
       }
     })
+
+    if (category && category !== 'all') {
+      products = products.filter((p) =>
+        p.category === category || (Array.isArray(p.categories) && p.categories.includes(category))
+      )
+    }
 
     return NextResponse.json({ success: true, data: products })
   } catch (error) {

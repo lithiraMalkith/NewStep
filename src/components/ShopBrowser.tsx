@@ -34,11 +34,13 @@ function ShopBrowserInner({
   heading,
   intro,
   categories,
+  showCategoryTabs = true,
 }: {
   products: Product[];
   heading: string;
   intro?: string;
   categories?: StorefrontCategory[];
+  showCategoryTabs?: boolean;
 }) {
   const searchParams = useSearchParams();
   const urlQuery = searchParams.get("q") || "";
@@ -281,22 +283,24 @@ function ShopBrowserInner({
         </div>
       </header>
 
-      {/* Dynamic Category Tabs */}
-      <div className="mt-6 flex flex-wrap gap-2">
-        {categoryTabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setCategoryFilter(tab.id)}
-            className={`px-4 py-1.5 rounded-full text-sm border transition-colors font-medium ${
-              categoryFilter === tab.id
-                ? "bg-ink text-paper border-ink"
-                : "border-line text-muted hover:border-ink hover:text-ink"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Dynamic Category Tabs — hidden on individual category pages */}
+      {showCategoryTabs && (
+        <div className="mt-6 flex flex-wrap gap-2">
+          {categoryTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setCategoryFilter(tab.id)}
+              className={`px-4 py-1.5 rounded-full text-sm border transition-colors font-medium ${
+                categoryFilter === tab.id
+                  ? "bg-ink text-paper border-ink"
+                  : "border-line text-muted hover:border-ink hover:text-ink"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[220px_1fr]">
         <aside className="hidden lg:block">{Filters}</aside>
@@ -372,6 +376,7 @@ export default function ShopBrowser(props: {
   heading: string;
   intro?: string;
   categories?: StorefrontCategory[];
+  showCategoryTabs?: boolean;
 }) {
   return (
     <Suspense fallback={<div className="container-x py-16 text-center text-muted">Loading shoes...</div>}>

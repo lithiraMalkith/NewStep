@@ -62,6 +62,8 @@ export interface AdminProduct {
   images: string[]
   category: string
   categoryLabel: string
+  categories?: string[]
+  categoryLabels?: string[]
   details: string[]
   variants: AdminVariant[]
   availabilityStatus: AvailabilityStatus

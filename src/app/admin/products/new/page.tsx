@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useGSAP } from '@gsap/react'
 import { gsap } from '@/lib/gsap-config'
@@ -8,13 +8,13 @@ import { useAuth } from '@/contexts/auth-context'
 import { createProduct } from '@/lib/admin-client'
 import { uploadImage } from '@/lib/admin-client'
 import { cn, slugify } from '@/lib/utils'
-import { ArrowLeft, Plus, X, Upload, Loader2, AlertCircle, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Plus, X, Upload, Loader2, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Check } from 'lucide-react'
 
 interface ColourRow { colour: string; sku: string; stockQty: number }
 interface SizeVariant { size: number; colours: ColourRow[]; expanded: boolean }
 interface Toast { id: string; type: 'success' | 'error'; message: string }
 
-const CATEGORIES = [
+const STATIC_CATEGORIES = [
   { value: 'mens', label: "Men's" },
   { value: 'womens', label: "Women's" },
   { value: 'kids', label: "Kids'" },
@@ -35,6 +35,48 @@ export default function ProductNewPage() {
   const [uploading, setUploading] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [submitAttempted, setSubmitAttempted] = useState(false)
+  const [categoryOptions, setCategoryOptions] = useState(STATIC_CATEGORIES)
+
+  // Fetch categories from admin panel or storefront
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        let items: { slug: string; name: string }[] = []
+        if (user) {
+          try {
+            const token = await user.getIdToken()
+            const authRes = await fetch('/api/categories', {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+            const authJson = await authRes.json()
+            if (authJson.success && authJson.data?.length > 0) {
+              items = authJson.data
+            }
+          } catch { /* fallback to public endpoint */ }
+        }
+
+        if (items.length === 0) {
+          const res = await fetch('/api/storefront/navigation')
+          const json = await res.json()
+          if (json.success && json.data?.length > 0) {
+            items = json.data
+          }
+        }
+
+        if (items.length > 0) {
+          const fetched = items.map((c) => ({ value: c.slug, label: c.name }))
+          // Ensure static core categories exist as options if not present
+          STATIC_CATEGORIES.forEach((sc) => {
+            if (!fetched.some((c) => c.value === sc.value)) {
+              fetched.push(sc)
+            }
+          })
+          setCategoryOptions(fetched)
+        }
+      } catch { /* keep static fallback */ }
+    }
+    loadCategories()
+  }, [user])
 
   // Form state — all blank by default
   const [name, setName] = useState('')
@@ -44,13 +86,23 @@ export default function ProductNewPage() {
   const [subtitle, setSubtitle] = useState('')
   const [price, setPrice] = useState('')
   const [compareAtPrice, setCompareAtPrice] = useState('')
-  const [category, setCategory] = useState('')
-  const [categoryLabel, setCategoryLabel] = useState('')
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [details, setDetails] = useState<string[]>([''])
   const [images, setImages] = useState<string[]>([])
   const [variants, setVariants] = useState<SizeVariant[]>(makeDefaultVariants())
   const [visibility, setVisibility] = useState<'draft' | 'published'>('draft')
   const [isNew, setIsNew] = useState(false)
+
+  const toggleCategory = (val: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(val) ? prev.filter((c) => c !== val) : [...prev, val]
+    )
+  }
+
+  const setAsPrimaryCategory = (e: React.MouseEvent, val: string) => {
+    e.stopPropagation()
+    setSelectedCategories((prev) => [val, ...prev.filter((c) => c !== val)])
+  }
 
   const addToast = (type: Toast['type'], message: string) => {
     const id = Math.random().toString(36).substr(2, 9)
@@ -90,7 +142,8 @@ export default function ProductNewPage() {
   const addColour = (sizeIdx: number) => {
     setVariants((prev) => prev.map((v, idx) => {
       if (idx !== sizeIdx) return v
-      const catPrefix = category.slice(0, 3).toUpperCase()
+      const primaryCat = selectedCategories[0] || 'GEN'
+      const catPrefix = primaryCat.slice(0, 3).toUpperCase()
       const newSku = `NS-${catPrefix}-${v.size}-${String(v.colours.length + 1).padStart(2, '0')}`
       return { ...v, colours: [...v.colours, { colour: '', sku: newSku, stockQty: 0 }], expanded: true }
     }))
@@ -117,13 +170,20 @@ export default function ProductNewPage() {
 
   const handleSubmit = async () => {
     setSubmitAttempted(true)
-    if (!user || !name.trim() || !price || !category) {
-      addToast('error', 'Please fill in all required fields')
+    if (!user || !name.trim() || !price || selectedCategories.length === 0) {
+      addToast('error', 'Please fill in all required fields and select at least one category')
       return
     }
     setSaving(true)
     try {
       const token = await user.getIdToken()
+
+      const primaryCategory = selectedCategories[0] || ''
+      const primaryCategoryLabel = categoryOptions.find((c) => c.value === primaryCategory)?.label || primaryCategory
+      const categoryLabels = selectedCategories.map(
+        (val) => categoryOptions.find((c) => c.value === val)?.label || val
+      )
+      const catPrefix = primaryCategory.slice(0, 3).toUpperCase() || 'GEN'
 
       // Build variants for API — only include sizes that have at least one colour entry
       const apiVariants = variants
@@ -131,15 +191,14 @@ export default function ProductNewPage() {
         .map((v) => ({
           size: v.size,
           colours: v.colours,
-          // legacy compat fields: use first colour's stock for backward compat
-          sku: v.colours[0]?.sku || `NS-${category.slice(0, 3).toUpperCase()}-${v.size}`,
+          sku: v.colours[0]?.sku || `NS-${catPrefix}-${v.size}`,
           stockQty: totalStock(v),
         }))
 
       // If no size/colour variants set, create a placeholder
       const finalVariants = apiVariants.length > 0
         ? apiVariants
-        : [{ size: 40, colours: [], sku: `NS-${category.slice(0, 3).toUpperCase()}-001`, stockQty: 0 }]
+        : [{ size: 40, colours: [], sku: `NS-${catPrefix}-001`, stockQty: 0 }]
 
       await createProduct(token, {
         name,
@@ -151,8 +210,10 @@ export default function ProductNewPage() {
         colourway: [...new Set(variants.flatMap(v => v.colours.map(c => c.colour)).filter(Boolean))],
         price: parseFloat(price) || 0,
         compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
-        category,
-        categoryLabel,
+        category: primaryCategory,
+        categoryLabel: primaryCategoryLabel,
+        categories: selectedCategories,
+        categoryLabels,
         details: details.filter((d) => d.trim()),
         images,
         variants: finalVariants as never,
@@ -202,17 +263,72 @@ export default function ProductNewPage() {
             <label className="text-xs text-[#8A8478] mb-1 block">Subtitle</label>
             <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Short tagline" className="w-full bg-[#0B0B0B] border border-[#24221F] rounded-lg px-3 py-2.5 text-sm text-[#FAF8F5] placeholder:text-[#8A8478]/50 outline-none focus:border-[#F7F4EE]" />
           </div>
-          <div>
-            <label className="text-xs text-[#8A8478] mb-1 block">Category *</label>
-            <select
-              value={category}
-              onChange={(e) => { setCategory(e.target.value); setCategoryLabel(CATEGORIES.find((c) => c.value === e.target.value)?.label || e.target.value) }}
-              className={cn('w-full bg-[#0B0B0B] border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#F7F4EE]', submitAttempted && !category ? 'border-[#E05252] text-[#8A8478]' : 'border-[#24221F] text-[#FAF8F5]')}
+          <div className="sm:col-span-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs text-[#8A8478] font-medium">
+                Categories * <span className="text-[#8A8478]/70 font-normal">(Select one or more)</span>
+              </label>
+              {selectedCategories.length > 0 && (
+                <span className="text-xs text-[#FAF8F5]/80 bg-[#1C1C1C] px-2 py-0.5 rounded-full border border-[#24221F]">
+                  {selectedCategories.length} selected
+                </span>
+              )}
+            </div>
+
+            <div
+              className={cn(
+                'flex flex-wrap gap-2 p-3 bg-[#0B0B0B] border rounded-lg min-h-[52px] items-center transition-colors',
+                submitAttempted && selectedCategories.length === 0 ? 'border-[#E05252]' : 'border-[#24221F]'
+              )}
             >
-              <option value="" disabled>Select a category...</option>
-              {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </select>
-            {submitAttempted && !category && <p className="text-xs text-[#E05252] mt-1">Category is required</p>}
+              {categoryOptions.map((c) => {
+                const isSelected = selectedCategories.includes(c.value)
+                const isPrimary = selectedCategories[0] === c.value
+                return (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => toggleCategory(c.value)}
+                    className={cn(
+                      'group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer select-none',
+                      isSelected
+                        ? 'bg-[#F7F4EE] text-[#0B0B0B] shadow-xs'
+                        : 'bg-[#141414] text-[#8A8478] border border-[#24221F] hover:text-[#FAF8F5] hover:border-[#3A352F]'
+                    )}
+                  >
+                    {isSelected ? (
+                      <Check className="w-3.5 h-3.5 text-[#0B0B0B] shrink-0" />
+                    ) : (
+                      <Plus className="w-3.5 h-3.5 text-[#8A8478] group-hover:text-[#FAF8F5] shrink-0" />
+                    )}
+                    <span>{c.label}</span>
+                    {isSelected && isPrimary && (
+                      <span className="ml-1 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-semibold rounded bg-[#0B0B0B]/15 text-[#0B0B0B]">
+                        Primary
+                      </span>
+                    )}
+                    {isSelected && !isPrimary && (
+                      <span
+                        onClick={(e) => setAsPrimaryCategory(e, c.value)}
+                        title="Set as Primary Category"
+                        className="ml-1 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-medium rounded hover:bg-[#0B0B0B]/15 text-[#0B0B0B]/60 hover:text-[#0B0B0B] transition-colors"
+                      >
+                        Make Primary
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {submitAttempted && selectedCategories.length === 0 && (
+              <p className="text-xs text-[#E05252] mt-1">Please select at least one category</p>
+            )}
+            {selectedCategories.length > 1 && (
+              <p className="text-[11px] text-[#8A8478] mt-1.5">
+                Primary category: <span className="text-[#FAF8F5] font-medium">{categoryOptions.find((c) => c.value === selectedCategories[0])?.label || selectedCategories[0]}</span> (used as main tag and SKU prefix).
+              </p>
+            )}
           </div>
         </div>
         <div>

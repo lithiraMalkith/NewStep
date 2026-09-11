@@ -44,6 +44,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         updatedAt: new Date(),
       }
 
+      if (Array.isArray(body.categories) && body.categories.length > 0) {
+        updateData.category = body.categories[0]
+      }
+      if (Array.isArray(body.categoryLabels) && body.categoryLabels.length > 0) {
+        updateData.categoryLabel = body.categoryLabels[0]
+      }
+
       // Remove undefined fields
       Object.keys(updateData).forEach((key) => {
         if (updateData[key] === undefined) delete updateData[key]

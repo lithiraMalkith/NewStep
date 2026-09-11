@@ -50,13 +50,20 @@ function getVariantsWithColours(product: AdminProduct): { size: number; colours:
   })
 }
 
-const FILTERS = ['all', 'mens', 'womens', 'kids', 'sale']
+const BASE_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'mens', label: "Men's" },
+  { value: 'womens', label: "Women's" },
+  { value: 'kids', label: "Kids'" },
+  { value: 'sale', label: 'Sale' },
+]
 
 export default function ProductsPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const [items, setItems] = useState<AdminProduct[]>([])
+  const [filterTabs, setFilterTabs] = useState(BASE_FILTERS)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
@@ -86,6 +93,26 @@ export default function ProductsPage() {
     load()
   }, [user, authLoading])
 
+  // Load custom categories for filter tabs
+  useEffect(() => {
+    async function loadNav() {
+      try {
+        const res = await fetch('/api/storefront/navigation')
+        const json = await res.json()
+        if (json.success && json.data?.length > 0) {
+          setFilterTabs((prev) => {
+            const existing = new Set(prev.map((f) => f.value))
+            const added = json.data
+              .filter((c: { slug: string }) => !existing.has(c.slug))
+              .map((c: { slug: string; name: string }) => ({ value: c.slug, label: c.name }))
+            return [...prev, ...added]
+          })
+        }
+      } catch { /* keep defaults */ }
+    }
+    loadNav()
+  }, [])
+
   useGSAP(() => {
     if (loading) return
     gsap.fromTo('.page-header', { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out', clearProps: 'opacity,y' })
@@ -109,7 +136,7 @@ export default function ProductsPage() {
 
   const filtered = items.filter((p) => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.slug.includes(search.toLowerCase())
-    const matchFilter = filter === 'all' || p.category === filter
+    const matchFilter = filter === 'all' || p.category === filter || (Array.isArray(p.categories) && p.categories.includes(filter))
     return matchSearch && matchFilter
   })
 
@@ -129,9 +156,9 @@ export default function ProductsPage() {
 
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={cn('px-4 py-1.5 rounded-full text-sm border transition-colors capitalize font-medium', filter === f ? 'bg-[#F7F4EE] border-[#F7F4EE] text-[#0B0B0B]' : 'border-[#24221F] text-[#8A8478] hover:text-[#FAF8F5] hover:border-[#3A352F] bg-[#121212]')}>
-            {f === 'all' ? 'All' : f === 'mens' ? "Men's" : f === 'womens' ? "Women's" : f === 'kids' ? "Kids'" : 'Sale'}
+        {filterTabs.map((f) => (
+          <button key={f.value} onClick={() => setFilter(f.value)} className={cn('px-4 py-1.5 rounded-full text-sm border transition-colors capitalize font-medium', filter === f.value ? 'bg-[#F7F4EE] border-[#F7F4EE] text-[#0B0B0B]' : 'border-[#24221F] text-[#8A8478] hover:text-[#FAF8F5] hover:border-[#3A352F] bg-[#121212]')}>
+            {f.label}
           </button>
         ))}
       </div>
@@ -182,7 +209,11 @@ export default function ProductsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-[#8A8478] capitalize hidden md:table-cell">{p.categoryLabel || p.category}</td>
+                      <td className="px-4 py-3 text-[#8A8478] capitalize hidden md:table-cell">
+                        {p.categoryLabels && p.categoryLabels.length > 0
+                          ? p.categoryLabels.join(', ')
+                          : (p.categoryLabel || p.category)}
+                      </td>
                       <td className="px-4 py-3 text-[#FAF8F5] font-medium">{formatPrice(p.price)}</td>
                       <td className="px-4 py-3 hidden sm:table-cell">
                         <div>

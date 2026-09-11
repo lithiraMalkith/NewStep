@@ -18,6 +18,8 @@ export type Product = {
   brand: string;
   category: string;
   categoryLabel: string;
+  categories?: string[];
+  categoryLabels?: string[];
   subtitle: string;
   colour: string;
   colourway: string[];

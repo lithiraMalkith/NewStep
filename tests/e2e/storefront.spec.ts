@@ -14,9 +14,9 @@ test.describe('Storefront E2E Tests - Full Application Coverage', () => {
       await expect(logo).toBeVisible();
 
       // Navigation links
-      await expect(page.getByRole('link', { name: 'Men', exact: true })).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Women', exact: true })).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Kids', exact: true })).toBeVisible();
+      await expect(page.getByRole('link', { name: /^Men('?s)?$/i }).first()).toBeVisible();
+      await expect(page.getByRole('link', { name: /^Women('?s)?$/i }).first()).toBeVisible();
+      await expect(page.getByRole('link', { name: /^Kids('?s)?$/i }).first()).toBeVisible();
       await expect(page.getByRole('link', { name: 'Sale', exact: true }).first()).toBeVisible();
       await expect(page.getByRole('link', { name: 'All Shoes', exact: true }).first()).toBeVisible();
 

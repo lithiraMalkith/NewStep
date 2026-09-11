@@ -16,15 +16,18 @@ export async function GET(req: NextRequest) {
 
       let query: FirebaseFirestore.Query = adminDb.collection('products').orderBy('createdAt', 'desc')
 
-      if (category && category !== 'all') {
-        query = query.where('category', '==', category)
-      }
       if (visibility) {
         query = query.where('visibility', '==', visibility)
       }
 
       const snapshot = await query.limit(200).get()
-      const products = serializeDocs(snapshot)
+      let products = serializeDocs(snapshot)
+
+      if (category && category !== 'all') {
+        products = products.filter((p: any) =>
+          p.category === category || (Array.isArray(p.categories) && p.categories.includes(category))
+        )
+      }
 
       return NextResponse.json({ success: true, data: products })
     } catch (error) {
@@ -50,8 +53,24 @@ export async function POST(req: NextRequest) {
 
       const now = new Date()
       const data = parsed.data
+
+      // Normalize categories & primary category
+      const categories = (data.categories && data.categories.length > 0)
+        ? data.categories
+        : data.category ? [data.category] : []
+      const categoryLabels = (data.categoryLabels && data.categoryLabels.length > 0)
+        ? data.categoryLabels
+        : data.categoryLabel ? [data.categoryLabel] : []
+
+      const primaryCategory = categories[0] || data.category || ''
+      const primaryCategoryLabel = categoryLabels[0] || data.categoryLabel || ''
+
       const productData = {
         ...data,
+        category: primaryCategory,
+        categoryLabel: primaryCategoryLabel,
+        categories,
+        categoryLabels,
         slug: data.slug || slugify(data.name),
         availabilityStatus: getAvailabilityStatus(data.variants),
         createdBy: authedReq.user.uid,

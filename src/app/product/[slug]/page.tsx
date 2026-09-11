@@ -24,6 +24,12 @@ async function fetchProductBySlug(slug: string): Promise<Product | undefined> {
       return {
         id: doc.id,
         ...rest,
+        images: data.images?.length ? data.images : ["/brand-visuals/p1.jpg"],
+        colour: data.colour || (data.colourway?.[0]) || "Standard",
+        variants: data.variants || [],
+        details: data.details || [],
+        category: data.category || (data.categories?.[0]) || "mens",
+        categoryLabel: data.categoryLabel || (data.categoryLabels?.[0]) || "Footwear",
         createdAt: createdAt?.toDate ? createdAt.toDate().toISOString() : typeof createdAt === 'string' ? createdAt : undefined,
         updatedAt: updatedAt?.toDate ? updatedAt.toDate().toISOString() : typeof updatedAt === 'string' ? updatedAt : undefined,
       } as unknown as Product;
@@ -42,13 +48,14 @@ export async function generateMetadata({
   const { slug } = await params;
   const product = await fetchProductBySlug(slug);
   if (!product) return {};
+  const img = product.images?.[0] || "/brand-visuals/p1.jpg";
   return {
-    title: `${product.name} — ${product.colour}`,
-    description: product.description.slice(0, 155),
+    title: `${product.name} — ${product.colour || "Footwear"}`,
+    description: (product.description || "").slice(0, 155),
     openGraph: {
       title: product.name,
-      description: product.description.slice(0, 155),
-      images: [product.images[0]!],
+      description: (product.description || "").slice(0, 155),
+      images: [img],
       type: "website",
     },
   };
