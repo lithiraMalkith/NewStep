@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth, type AuthedRequest } from '@/lib/auth-middleware'
 import { adminDb } from '@/lib/firebase-admin'
 import { serializeDoc } from '@/lib/admin-service'
-import { getAvailabilityStatus } from '@/lib/utils'
+import { slugify, getAvailabilityStatus } from '@/lib/utils'
 import { logAudit } from '@/lib/audit'
+import { invalidateCache } from '@/lib/server-cache'
 
 // GET /api/products/:id
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -44,10 +45,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         updatedAt: new Date(),
       }
 
-      if (Array.isArray(body.categories) && body.categories.length > 0) {
+      if (!updateData.category && Array.isArray(body.categories) && body.categories.length > 0) {
         updateData.category = body.categories[0]
       }
-      if (Array.isArray(body.categoryLabels) && body.categoryLabels.length > 0) {
+      if (!updateData.categoryLabel && Array.isArray(body.categoryLabels) && body.categoryLabels.length > 0) {
         updateData.categoryLabel = body.categoryLabels[0]
       }
 
@@ -57,6 +58,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       })
 
       await docRef.update(updateData)
+      invalidateCache()
 
       // Fire-and-forget audit log
       logAudit({
@@ -94,6 +96,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
       const productName = doc.data()?.name || id
       await docRef.delete()
+      invalidateCache()
 
       logAudit({
         userId: authedReq.user.uid,

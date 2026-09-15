@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import ShopBrowser from "@/components/ShopBrowser";
 import { adminDb } from "@/lib/firebase-admin";
 import { products as staticProducts } from "@/lib/products";
+import { getCached, setCached } from "@/lib/server-cache";
 import type { Product } from "@/lib/types";
 import type { StorefrontCategory } from "@/components/ShopBrowser";
 
@@ -13,11 +15,16 @@ export const metadata: Metadata = {
 
 export const revalidate = 120;
 
+const CACHE_KEY = 'shop_all_data';
+
 async function getShopData(): Promise<{ products: Product[]; categories: StorefrontCategory[] }> {
+  const cached = getCached<{ products: Product[]; categories: StorefrontCategory[] }>(CACHE_KEY);
+  if (cached) return cached;
+
   try {
     const [productSnap, catSnap] = await Promise.all([
       adminDb.collection('products').where('visibility', '==', 'published').limit(200).get(),
-      adminDb.collection('categories').orderBy('order', 'asc').limit(20).get(),
+      adminDb.collection('categories').orderBy('order', 'asc').limit(100).get(),
     ]);
 
     const dbProducts = productSnap.docs.map((doc) => {
@@ -32,11 +39,22 @@ async function getShopData(): Promise<{ products: Product[]; categories: Storefr
       } as unknown as Product;
     });
 
-    const categories: StorefrontCategory[] = catSnap.docs.map((doc) => ({
-      id: doc.id,
-      name: doc.data().name as string,
-      slug: doc.data().slug as string,
-    }));
+    // Only include active root categories for the main category filter tabs
+    const seenCatSlugs = new Set<string>();
+    const categories: StorefrontCategory[] = [];
+    for (const doc of catSnap.docs) {
+      const data = doc.data();
+      const isRoot = data.depth === 0 || !data.parentId;
+      const isActive = data.isActive !== false;
+      if (isRoot && isActive && data.slug && !seenCatSlugs.has(data.slug)) {
+        seenCatSlugs.add(data.slug);
+        categories.push({
+          id: doc.id,
+          name: data.name as string,
+          slug: data.slug as string,
+        });
+      }
+    }
 
     // Merge DB + static without duplicate slugs
     const existingSlugs = new Set(dbProducts.map((p) => p.slug));
@@ -45,20 +63,26 @@ async function getShopData(): Promise<{ products: Product[]; categories: Storefr
       if (!existingSlugs.has(p.slug)) merged.push(p);
     }
 
-    return { products: merged, categories };
+    const result = { products: merged, categories };
+    setCached(CACHE_KEY, result, 120);
+    return result;
   } catch {
-    return { products: staticProducts, categories: [] };
+    const fallback = { products: staticProducts, categories: [] };
+    setCached(CACHE_KEY, fallback, 60);
+    return fallback;
   }
 }
 
 export default async function ShopPage() {
   const { products, categories } = await getShopData();
   return (
-    <ShopBrowser
-      products={products}
-      heading="All Shoes"
-      intro="Every pair we stock, with real size-level availability. Filter by size so you only see what actually fits."
-      categories={categories}
-    />
+    <Suspense fallback={<div className="min-h-screen bg-sand" />}>
+      <ShopBrowser
+        products={products}
+        heading="All Shoes"
+        intro="Every pair we stock, with real size-level availability. Filter by size so you only see what actually fits."
+        categories={categories}
+      />
+    </Suspense>
   );
 }

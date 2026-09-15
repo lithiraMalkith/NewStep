@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
+import { getFriendlyAuthErrorMessage } from '@/lib/auth-errors'
 
 export default function CustomerLoginPage() {
   const router = useRouter()
@@ -31,13 +32,8 @@ export default function CustomerLoginPage() {
     try {
       await signInWithEmail(email, password)
       router.push('/account/profile')
-    } catch (err: any) {
-      const msg = err?.message || 'Login failed. Please check your email and password.'
-      if (msg.includes('user-not-found') || msg.includes('wrong-password') || msg.includes('invalid-credential')) {
-        setError('Invalid email or password. Please try again.')
-      } else {
-        setError(msg)
-      }
+    } catch (err: unknown) {
+      setError(getFriendlyAuthErrorMessage(err, 'Login failed. Please check your email and password.'))
     } finally {
       setLoading(false)
     }
@@ -50,8 +46,8 @@ export default function CustomerLoginPage() {
     try {
       await signInWithGoogle()
       router.push('/account/profile')
-    } catch (err: any) {
-      setError(err?.message || 'Google sign-in could not be completed.')
+    } catch (err: unknown) {
+      setError(getFriendlyAuthErrorMessage(err, 'Google sign-in could not be completed.'))
     } finally {
       setLoading(false)
     }
@@ -69,8 +65,8 @@ export default function CustomerLoginPage() {
     try {
       await sendPasswordReset(email.trim())
       setMessage(`Password reset email sent to ${email}. Please check your inbox or spam folder.`)
-    } catch (err: any) {
-      setError(err?.message || 'Failed to send password reset email. Check if the email is registered.')
+    } catch (err: unknown) {
+      setError(getFriendlyAuthErrorMessage(err, 'Failed to send password reset email. Check if the email is registered.'))
     } finally {
       setLoading(false)
     }

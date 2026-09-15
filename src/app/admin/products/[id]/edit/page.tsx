@@ -7,18 +7,113 @@ import { gsap } from '@/lib/gsap-config'
 import { useAuth } from '@/contexts/auth-context'
 import { fetchProduct, updateProduct, uploadImage } from '@/lib/admin-client'
 import { cn, slugify } from '@/lib/utils'
-import { ArrowLeft, Plus, X, Upload, Loader2, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Check } from 'lucide-react'
+import { ArrowLeft, Plus, X, Upload, Loader2, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Check, ChevronRight } from 'lucide-react'
 
 interface ColourRow { colour: string; sku: string; stockQty: number }
 interface SizeVariant { size: number; colours: ColourRow[]; expanded: boolean }
 interface Toast { id: string; type: 'success' | 'error'; message: string }
 
-const STATIC_CATEGORIES = [
-  { value: 'mens', label: "Men's" },
-  { value: 'womens', label: "Women's" },
-  { value: 'kids', label: "Kids'" },
-  { value: 'sale', label: 'Sale' },
+/** Category option with unique ID (Firestore doc ID) to avoid duplicate key issues */
+interface CategoryOption {
+  id: string        // Firestore doc ID — always unique
+  slug: string      // URL slug — may duplicate across parents (e.g. "socks")
+  label: string     // Display name
+  treePath: string  // Full path like "Men > Footwear > Sports"
+  depth: number
+  parentId: string | null
+}
+
+const STATIC_CATEGORIES: CategoryOption[] = [
+  { id: 'mens', slug: 'mens', label: "Men", treePath: "Men", depth: 0, parentId: null },
+  { id: 'womens', slug: 'womens', label: "Women", treePath: "Women", depth: 0, parentId: null },
+  { id: 'kids', slug: 'kids', label: "Kids", treePath: "Kids", depth: 0, parentId: null },
+  { id: 'sale', slug: 'sale', label: 'Sale', treePath: 'Sale', depth: 0, parentId: null },
 ]
+
+/**
+ * Map raw category strings (which may be node IDs, slugs like "footwear", or old legacy slugs)
+ * to concrete categoryOption IDs, disambiguating duplicates by ancestor hierarchy.
+ */
+function resolveCategoryIds(
+  rawIdsOrSlugs: string[],
+  options: CategoryOption[],
+  rootHint?: string
+): string[] {
+  if (!rawIdsOrSlugs || rawIdsOrSlugs.length === 0) return []
+  const resolved = new Set<string>()
+  const unmapped: string[] = []
+
+  // 1. Direct ID matches
+  for (const item of rawIdsOrSlugs) {
+    if (options.some(o => o.id === item)) {
+      resolved.add(item)
+    } else {
+      unmapped.push(item)
+    }
+  }
+
+  // 2. Slug matches with hierarchy awareness
+  for (const slug of unmapped) {
+    const matchingOpts = options.filter(o => o.slug === slug)
+    if (matchingOpts.length === 1) {
+      resolved.add(matchingOpts[0].id)
+    } else if (matchingOpts.length > 1) {
+      const matchedWithAncestor = matchingOpts.find(o => {
+        let cur = o.parentId
+        while (cur) {
+          if (resolved.has(cur) || (rootHint && cur === rootHint)) return true
+          const parent = options.find(p => p.id === cur)
+          cur = parent ? parent.parentId : null
+        }
+        return false
+      })
+      if (matchedWithAncestor) {
+        resolved.add(matchedWithAncestor.id)
+      } else {
+        const matchedWithSlug = matchingOpts.find(o => {
+          let cur = o.parentId
+          while (cur) {
+            const parent = options.find(p => p.id === cur)
+            if (parent && rawIdsOrSlugs.includes(parent.slug)) return true
+            cur = parent ? parent.parentId : null
+          }
+          return false
+        })
+        if (matchedWithSlug) {
+          resolved.add(matchedWithSlug.id)
+        } else {
+          resolved.add(matchingOpts[0].id)
+        }
+      }
+    } else {
+      // Unknown or legacy slug — keep so it displays in chips and can be removed
+      resolved.add(slug)
+    }
+  }
+
+  return Array.from(resolved)
+}
+
+/** Build tree path labels from flat category list */
+function buildTreePaths(items: { id: string; slug: string; name: string; depth?: number; parentId?: string | null }[]): CategoryOption[] {
+  const byId = new Map(items.map(c => [c.id, c]))
+  return items.map(c => {
+    const parts: string[] = []
+    let cur: typeof c | undefined = c
+    while (cur) {
+      parts.unshift(cur.name)
+      cur = cur.parentId ? byId.get(cur.parentId) : undefined
+    }
+    return {
+      id: c.id,
+      slug: c.slug,
+      label: c.name,
+      treePath: parts.join(' › '),
+      depth: c.depth ?? 0,
+      parentId: c.parentId ?? null,
+    }
+  })
+}
 
 const DEFAULT_SIZES = [36, 37, 38, 39, 40, 41, 42, 43, 44, 45]
 
@@ -58,13 +153,15 @@ export default function ProductEditPage() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
-  const [categoryOptions, setCategoryOptions] = useState(STATIC_CATEGORIES)
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>(STATIC_CATEGORIES)
+  const rawCategoriesRef = useRef<string[]>([])
+  const rootHintRef = useRef<string>('')
 
   // Fetch categories from admin panel or storefront
   useEffect(() => {
     async function loadCategories() {
       try {
-        let items: { slug: string; name: string }[] = []
+        let items: { id: string; slug: string; name: string; depth?: number; parentId?: string | null }[] = []
         if (user) {
           try {
             const token = await user.getIdToken()
@@ -87,13 +184,21 @@ export default function ProductEditPage() {
         }
 
         if (items.length > 0) {
-          const fetched = items.map((c) => ({ value: c.slug, label: c.name }))
+          const fetched = buildTreePaths(items)
+          // Ensure static root categories are present
           STATIC_CATEGORIES.forEach((sc) => {
-            if (!fetched.some((c) => c.value === sc.value)) {
+            if (!fetched.some((c) => c.id === sc.id)) {
               fetched.push(sc)
             }
           })
           setCategoryOptions(fetched)
+
+          // Re-resolve categories once full options tree is available
+          if (rawCategoriesRef.current.length > 0) {
+            setSelectedCategories((prev) =>
+              resolveCategoryIds(prev.length > 0 ? prev : rawCategoriesRef.current, fetched, rootHintRef.current)
+            )
+          }
         }
       } catch { /* keep static fallback */ }
     }
@@ -115,15 +220,47 @@ export default function ProductEditPage() {
   const [visibility, setVisibility] = useState<'draft' | 'published'>('draft')
   const [isNew, setIsNew] = useState(false)
 
-  const toggleCategory = (val: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(val) ? prev.filter((c) => c !== val) : [...prev, val]
-    )
+  // Category helpers (hierarchy-aware)
+  const getDescendantIds = (nodeId: string, opts: CategoryOption[] = categoryOptions): string[] => {
+    const children = opts.filter((c) => c.parentId === nodeId)
+    return children.flatMap((c) => [c.id, ...getDescendantIds(c.id, opts)])
   }
 
-  const setAsPrimaryCategory = (e: React.MouseEvent, val: string) => {
+  const getAncestorIds = (nodeId: string, opts: CategoryOption[] = categoryOptions): string[] => {
+    const node = opts.find((c) => c.id === nodeId)
+    if (!node || !node.parentId) return []
+    return [node.parentId, ...getAncestorIds(node.parentId, opts)]
+  }
+
+  const toggleCategory = (id: string) => {
+    setSelectedCategories((prev) => {
+      const isSelected = prev.includes(id)
+      if (isSelected) {
+        // Deselecting: remove this node and all descendants
+        const toRemove = new Set([id, ...getDescendantIds(id)])
+        return prev.filter((c) => !toRemove.has(c))
+      } else {
+        // Selecting: auto-select ancestor path so parent hierarchy is intact
+        const ancestors = getAncestorIds(id)
+        return Array.from(new Set([...prev, ...ancestors, id]))
+      }
+    })
+  }
+
+  const removeCategory = (id: string) => {
+    setSelectedCategories((prev) => {
+      const toRemove = new Set([id, ...getDescendantIds(id)])
+      return prev.filter((c) => !toRemove.has(c))
+    })
+  }
+
+  const clearAllCategories = () => {
+    setSelectedCategories([])
+  }
+
+  const setAsPrimaryCategory = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
-    setSelectedCategories((prev) => [val, ...prev.filter((c) => c !== val)])
+    setSelectedCategories((prev) => [id, ...prev.filter((c) => c !== id)])
   }
 
   useEffect(() => {
@@ -141,26 +278,14 @@ export default function ProductEditPage() {
         setCompareAtPrice(data.compareAtPrice?.toString() || '')
 
         // Load multiple categories or single legacy category
-        const initialCategories = (data.categories && Array.isArray(data.categories) && data.categories.length > 0)
+        rootHintRef.current = data.category || ''
+        const rawInitial = (data.categories && Array.isArray(data.categories) && data.categories.length > 0)
           ? data.categories
           : data.category ? [data.category] : []
-        setSelectedCategories(initialCategories)
+        rawCategoriesRef.current = rawInitial
+        setSelectedCategories(resolveCategoryIds(rawInitial, categoryOptions, data.category))
 
-        // If product has category values not in current categoryOptions, append them
-        if (initialCategories.length > 0) {
-          setCategoryOptions((prev) => {
-            const existingVals = new Set(prev.map((c) => c.value))
-            const newOpts = [...prev]
-            initialCategories.forEach((catVal: string, idx: number) => {
-              if (!existingVals.has(catVal)) {
-                const lbl = data.categoryLabels?.[idx] || (catVal === data.category ? data.categoryLabel : undefined) || catVal
-                newOpts.push({ value: catVal, label: lbl })
-                existingVals.add(catVal)
-              }
-            })
-            return newOpts
-          })
-        }
+
 
         setDetails(data.details?.length ? data.details : [''])
         setImages(data.images || [])
@@ -250,10 +375,63 @@ export default function ProductEditPage() {
     try {
       const token = await user.getIdToken()
 
-      const primaryCategory = selectedCategories[0] || ''
-      const primaryCategoryLabel = categoryOptions.find((c) => c.value === primaryCategory)?.label || primaryCategory
+      const primaryCategoryId = selectedCategories[0] || ''
+      const primaryOpt = categoryOptions.find((c) => c.id === primaryCategoryId)
+
+      // Determine root category (depth === 0)
+      let rootOpt: CategoryOption | undefined
+      if (primaryOpt) {
+        let cur: CategoryOption | undefined = primaryOpt
+        while (cur) {
+          if (cur.depth === 0 || !cur.parentId) {
+            rootOpt = cur
+            break
+          }
+          cur = categoryOptions.find((c) => c.id === cur?.parentId)
+        }
+      }
+      if (!rootOpt) {
+        rootOpt = selectedCategories
+          .map((id) => categoryOptions.find((c) => c.id === id))
+          .find((c) => c && (c.depth === 0 || !c.parentId))
+      }
+      if (!rootOpt) {
+        rootOpt = primaryOpt || categoryOptions[0]
+      }
+
+      const primaryCategory = rootOpt?.slug || primaryOpt?.slug || 'mens'
+      const primaryCategoryLabel = primaryOpt?.label || rootOpt?.label || 'General'
+
+      // Determine subCategory (depth 1) and subSubCategory (depth 2)
+      const selectedOpts = selectedCategories
+        .map((id) => categoryOptions.find((c) => c.id === id))
+        .filter(Boolean) as CategoryOption[]
+
+      const subOpt =
+        selectedOpts.find((c) => c.depth === 1 && (!rootOpt || c.parentId === rootOpt.id)) ||
+        selectedOpts.find((c) => c.depth === 1)
+      const subCategory = subOpt?.slug || null
+
+      const subSubOpt =
+        selectedOpts.find((c) => c.depth === 2 && (!subOpt || c.parentId === subOpt.id)) ||
+        selectedOpts.find((c) => c.depth === 2)
+      const subSubCategory = subSubOpt?.slug || null
+
+      // Slugs + unique IDs for thorough indexing across store and admin
+      const categorySlugs = selectedOpts.map((c) => c.slug).filter(Boolean)
+      const finalCategories = Array.from(
+        new Set([
+          primaryCategory,
+          ...(subCategory ? [subCategory] : []),
+          ...(subSubCategory ? [subSubCategory] : []),
+          ...categorySlugs,
+          ...selectedCategories,
+        ])
+      )
+
+      // Clean human-readable display labels for selected categories
       const categoryLabels = selectedCategories.map(
-        (val) => categoryOptions.find((c) => c.value === val)?.label || val
+        (id) => categoryOptions.find((c) => c.id === id)?.label || id
       )
       const catPrefix = primaryCategory.slice(0, 3).toUpperCase() || 'GEN'
 
@@ -276,13 +454,15 @@ export default function ProductEditPage() {
         brand,
         description,
         subtitle: subtitle || name,
-        colour: variants.flatMap(v => v.colours.map(c => c.colour)).filter(Boolean)[0] || '',
-        colourway: [...new Set(variants.flatMap(v => v.colours.map(c => c.colour)).filter(Boolean))],
+        colour: variants.flatMap((v) => v.colours.map((c) => c.colour)).filter(Boolean)[0] || '',
+        colourway: [...new Set(variants.flatMap((v) => v.colours.map((c) => c.colour)).filter(Boolean))],
         price: parseFloat(price) || 0,
         compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
         category: primaryCategory,
         categoryLabel: primaryCategoryLabel,
-        categories: selectedCategories,
+        subCategory,
+        subSubCategory,
+        categories: finalCategories,
         categoryLabels,
         details: details.filter((d) => d.trim()),
         images,
@@ -329,62 +509,147 @@ export default function ProductEditPage() {
             <label className="text-xs text-[#8A8478] mb-1 block">Subtitle</label>
             <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} className="w-full bg-[#0B0B0B] border border-[#24221F] rounded-lg px-3 py-2.5 text-sm text-[#FAF8F5] outline-none focus:border-[#F7F4EE]" />
           </div>
-          <div className="sm:col-span-2">
-            <div className="flex items-center justify-between mb-1.5">
+          <div className="sm:col-span-2 space-y-2">
+            <div className="flex items-center justify-between">
               <label className="text-xs text-[#8A8478] font-medium">
                 Categories * <span className="text-[#8A8478]/70 font-normal">(Select one or more)</span>
               </label>
-              {selectedCategories.length > 0 && (
-                <span className="text-xs text-[#FAF8F5]/80 bg-[#1C1C1C] px-2 py-0.5 rounded-full border border-[#24221F]">
-                  {selectedCategories.length} selected
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {selectedCategories.length > 0 && (
+                  <>
+                    <span className="text-xs text-[#FAF8F5]/80 bg-[#1C1C1C] px-2 py-0.5 rounded-full border border-[#24221F]">
+                      {selectedCategories.length} selected
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearAllCategories}
+                      className="text-xs text-[#8A8478] hover:text-[#E05252] transition-colors cursor-pointer"
+                    >
+                      Clear all
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
+
+            {/* Selected category chips with direct remove (X) buttons */}
+            {selectedCategories.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-[#0e0e0e] border border-[#24221F] rounded-lg">
+                <span className="text-[10px] text-[#8A8478] uppercase tracking-wider font-semibold mr-1">
+                  Selected:
+                </span>
+                {selectedCategories.map((id) => {
+                  const opt = categoryOptions.find((c) => c.id === id)
+                  const label = opt ? (opt.treePath || opt.label) : id
+                  const isPrimary = selectedCategories[0] === id
+                  const isOrphan = !opt
+                  return (
+                    <span
+                      key={id}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all',
+                        isPrimary
+                          ? 'bg-[#FAF8F5] text-[#0B0B0B] border-[#FAF8F5] shadow-xs'
+                          : isOrphan
+                          ? 'bg-[#2A1515] text-[#FF8585] border-[#4A2020]'
+                          : 'bg-[#181818] text-[#FAF8F5] border-[#2A2825]'
+                      )}
+                    >
+                      <span className="max-w-[220px] truncate">{label}</span>
+                      {isPrimary && (
+                        <span className="text-[9px] uppercase tracking-wider font-bold bg-[#0B0B0B]/20 text-[#0B0B0B] px-1 py-0.5 rounded shrink-0">
+                          Primary
+                        </span>
+                      )}
+                      {isOrphan && (
+                        <span className="text-[9px] uppercase tracking-wider font-bold bg-[#FF8585]/20 text-[#FF8585] px-1 py-0.5 rounded shrink-0" title="Legacy unlinked category. Click × to remove.">
+                          Old
+                        </span>
+                      )}
+                      {!isPrimary && !isOrphan && (
+                        <button
+                          type="button"
+                          onClick={(e) => setAsPrimaryCategory(e, id)}
+                          className="text-[9px] text-[#8A8478] hover:text-[#FAF8F5] underline underline-offset-2 ml-0.5 shrink-0 cursor-pointer"
+                          title="Set as primary category"
+                        >
+                          Make Primary
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeCategory(id)}
+                        className={cn(
+                          'p-0.5 rounded-full transition-colors shrink-0 cursor-pointer',
+                          isPrimary
+                            ? 'hover:bg-black/10 text-[#0B0B0B]'
+                            : 'hover:bg-[#2A2825] text-[#8A8478] hover:text-[#FAF8F5]'
+                        )}
+                        title={`Remove ${label}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )
+                })}
+              </div>
+            )}
 
             <div
               className={cn(
-                'flex flex-wrap gap-2 p-3 bg-[#0B0B0B] border rounded-lg min-h-[52px] items-center transition-colors',
+                'p-3 bg-[#0B0B0B] border rounded-lg min-h-[52px] transition-colors space-y-1 max-h-[360px] overflow-y-auto',
                 selectedCategories.length === 0 ? 'border-[#E05252]' : 'border-[#24221F]'
               )}
             >
-              {categoryOptions.map((c) => {
-                const isSelected = selectedCategories.includes(c.value)
-                const isPrimary = selectedCategories[0] === c.value
-                return (
-                  <button
-                    key={c.value}
-                    type="button"
-                    onClick={() => toggleCategory(c.value)}
-                    className={cn(
-                      'group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer select-none',
-                      isSelected
-                        ? 'bg-[#F7F4EE] text-[#0B0B0B] shadow-xs'
-                        : 'bg-[#141414] text-[#8A8478] border border-[#24221F] hover:text-[#FAF8F5] hover:border-[#3A352F]'
-                    )}
-                  >
-                    {isSelected ? (
-                      <Check className="w-3.5 h-3.5 text-[#0B0B0B] shrink-0" />
-                    ) : (
-                      <Plus className="w-3.5 h-3.5 text-[#8A8478] group-hover:text-[#FAF8F5] shrink-0" />
-                    )}
-                    <span>{c.label}</span>
-                    {isSelected && isPrimary && (
-                      <span className="ml-1 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-semibold rounded bg-[#0B0B0B]/15 text-[#0B0B0B]">
-                        Primary
-                      </span>
-                    )}
-                    {isSelected && !isPrimary && (
-                      <span
-                        onClick={(e) => setAsPrimaryCategory(e, c.value)}
-                        title="Set as Primary Category"
-                        className="ml-1 px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-medium rounded hover:bg-[#0B0B0B]/15 text-[#0B0B0B]/60 hover:text-[#0B0B0B] transition-colors"
+              {/* Group categories by tree: roots, then children indented */}
+              {(() => {
+                const roots = categoryOptions.filter((c) => !c.parentId || c.depth === 0)
+                const getChildren = (parentId: string) => categoryOptions.filter((c) => c.parentId === parentId)
+                const renderNode = (c: CategoryOption, indent: number) => {
+                  const isSelected = selectedCategories.includes(c.id)
+                  const isPrimary = selectedCategories[0] === c.id
+                  const children = getChildren(c.id)
+                  return (
+                    <div key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => toggleCategory(c.id)}
+                        className={cn(
+                          'group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer select-none w-full text-left',
+                          isSelected
+                            ? 'bg-[#F7F4EE] text-[#0B0B0B] shadow-xs'
+                            : 'bg-[#141414] text-[#8A8478] border border-[#24221F] hover:text-[#FAF8F5] hover:border-[#3A352F]'
+                        )}
+                        style={{ marginLeft: indent * 20 }}
                       >
-                        Make Primary
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
+                        {indent > 0 && <ChevronRight className="w-3 h-3 text-[#8A8478]/50 shrink-0" />}
+                        {isSelected ? (
+                          <Check className="w-3.5 h-3.5 text-[#0B0B0B] shrink-0" />
+                        ) : (
+                          <Plus className="w-3.5 h-3.5 text-[#8A8478] group-hover:text-[#FAF8F5] shrink-0" />
+                        )}
+                        <span className="truncate">{c.label}</span>
+                        {isSelected && isPrimary && (
+                          <span className="ml-auto px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-semibold rounded bg-[#0B0B0B]/15 text-[#0B0B0B] shrink-0">
+                            Primary
+                          </span>
+                        )}
+                        {isSelected && !isPrimary && (
+                          <span
+                            onClick={(e) => setAsPrimaryCategory(e, c.id)}
+                            title="Set as Primary Category"
+                            className="ml-auto px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-medium rounded hover:bg-[#0B0B0B]/15 text-[#0B0B0B]/60 hover:text-[#0B0B0B] transition-colors shrink-0"
+                          >
+                            Make Primary
+                          </span>
+                        )}
+                      </button>
+                      {children.length > 0 && children.map((child) => renderNode(child, indent + 1))}
+                    </div>
+                  )
+                }
+                return roots.map((r) => renderNode(r, 0))
+              })()}
             </div>
 
             {selectedCategories.length === 0 && (
@@ -392,7 +657,7 @@ export default function ProductEditPage() {
             )}
             {selectedCategories.length > 1 && (
               <p className="text-[11px] text-[#8A8478] mt-1.5">
-                Primary category: <span className="text-[#FAF8F5] font-medium">{categoryOptions.find((c) => c.value === selectedCategories[0])?.label || selectedCategories[0]}</span> (used as main tag and SKU prefix).
+                Primary category: <span className="text-[#FAF8F5] font-medium">{categoryOptions.find((c) => c.id === selectedCategories[0])?.label || selectedCategories[0]}</span> (used as main tag and SKU prefix).
               </p>
             )}
           </div>

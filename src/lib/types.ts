@@ -18,6 +18,8 @@ export type Product = {
   brand: string;
   category: string;
   categoryLabel: string;
+  subCategory?: string;       // slug of 2nd-level category
+  subSubCategory?: string;    // slug of 3rd-level category
   categories?: string[];
   categoryLabels?: string[];
   subtitle: string;

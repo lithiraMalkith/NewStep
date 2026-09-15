@@ -8,6 +8,8 @@ import { gsap } from '@/lib/gsap-config'
 import { auth } from '@/lib/firebase'
 import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
+import { getFriendlyAuthErrorMessage } from '@/lib/auth-errors'
+
 export default function AdminLoginPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
@@ -50,7 +52,7 @@ export default function AdminLoginPage() {
       }
       router.push('/admin')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed. Check your credentials.')
+      setError(getFriendlyAuthErrorMessage(err, 'Sign in failed. Please check your credentials.'))
     } finally {
       setLoading(false)
     }
@@ -70,7 +72,7 @@ export default function AdminLoginPage() {
       }
       router.push('/admin')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed.')
+      setError(getFriendlyAuthErrorMessage(err, 'Google sign-in could not be completed.'))
     } finally {
       setLoading(false)
     }

@@ -86,8 +86,19 @@ export async function GET(req: NextRequest) {
     orders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
     return NextResponse.json({ success: true, data: orders })
-  } catch (error) {
-    console.error('GET /api/account/orders error:', error)
+  } catch (error: unknown) {
+    const err = error as { code?: number; message?: string } | undefined
+    const isQuotaExceeded =
+      err?.code === 8 ||
+      err?.message?.includes('RESOURCE_EXHAUSTED') ||
+      err?.message?.includes('Quota exceeded')
+
+    if (isQuotaExceeded) {
+      console.warn('[Account Orders] Firestore quota exceeded. Returning empty list so local orders can be used.')
+      return NextResponse.json({ success: true, data: [], warning: 'Quota exceeded' })
+    }
+
+    console.error('GET /api/account/orders error:', err?.message || error)
     return NextResponse.json(
       { success: false, error: 'Failed to retrieve orders' },
       { status: 500 }

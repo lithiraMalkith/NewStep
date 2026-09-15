@@ -9,6 +9,7 @@ import AnimatedCounter from "@/components/AnimatedCounter";
 import { adminDb } from "@/lib/firebase-admin";
 import type { Product } from "@/lib/types";
 import { products as staticProducts } from "@/lib/products";
+import { getCached, setCached } from "@/lib/server-cache";
 
 interface StorefrontCategory { id: string; name: string; slug: string; image?: string; blurb?: string }
 
@@ -44,7 +45,12 @@ const REVIEWS = [
   },
 ];
 
+const CACHE_KEY = 'home_page_data';
+
 async function getHomeData(): Promise<{ products: Product[]; categories: StorefrontCategory[]; featuredProducts: Product[] }> {
+  const cached = getCached<{ products: Product[]; categories: StorefrontCategory[]; featuredProducts: Product[] }>(CACHE_KEY);
+  if (cached) return cached;
+
   try {
     const [productSnap, catSnap, featuredSnap] = await Promise.all([
       adminDb.collection('products').where('visibility', '==', 'published').limit(50).get(),
@@ -128,10 +134,19 @@ async function getHomeData(): Promise<{ products: Product[]; categories: Storefr
       ? featuredProducts
       : products.filter((p) => p.isBestseller || p.isNew).slice(0, 8)
 
-    return { products, categories: categories.length > 0 ? categories : STATIC_CATEGORIES, featuredProducts: finalFeatured }
-  } catch (error) {
-    console.error("Failed to fetch home data, using static fallback:", error)
-    return { products: staticProducts, categories: STATIC_CATEGORIES, featuredProducts: [] }
+    const result = { products, categories: categories.length > 0 ? categories : STATIC_CATEGORIES, featuredProducts: finalFeatured }
+    setCached(CACHE_KEY, result, 120)
+    return result
+  } catch (error: unknown) {
+    const err = error as { code?: number; message?: string } | undefined
+    if (err?.code === 8 || err?.message?.includes('RESOURCE_EXHAUSTED')) {
+      console.warn('[Storefront] Firestore quota exceeded on home page. Serving cached/static fallback.')
+    } else {
+      console.error("Failed to fetch home data, using static fallback:", err?.message || error)
+    }
+    const fallback = { products: staticProducts, categories: STATIC_CATEGORIES, featuredProducts: [] }
+    setCached(CACHE_KEY, fallback, 60)
+    return fallback
   }
 }
 

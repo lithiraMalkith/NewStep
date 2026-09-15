@@ -1,10 +1,14 @@
+import { Suspense, cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ShopBrowser from "@/components/ShopBrowser";
-import { byCategory, categories } from "@/lib/products";
+import { byCategory, categories, products as staticProducts } from "@/lib/products";
 import { adminDb } from "@/lib/firebase-admin";
+import { buildCategoryTree, DEFAULT_CATEGORY_TREE, getSubCategoriesForRootSlug } from "@/lib/category-tree";
+import { getCached, setCached } from "@/lib/server-cache";
 import type { Product } from "@/lib/types";
 import type { StorefrontCategory } from "@/components/ShopBrowser";
+import type { CategoryNode, CategoryTreeNode } from "@/types";
 
 // Static copy for the original hardcoded categories — used as fallback
 const STATIC_COPY: Record<string, { heading: string; intro: string; title: string; description: string }> = {
@@ -41,14 +45,18 @@ interface CategoryData {
   description: string;
   products: Product[];
   categories: StorefrontCategory[];
+  subCategories: CategoryTreeNode[];
 }
 
 /**
- * Fetch category metadata + products. Checks Firestore first, then falls back
- * to the static COPY dictionary. Returns null if the category doesn't exist
- * in either source.
+ * Fetch category metadata + products + sub-categories.
+ * Cached in-memory and deduplicated per-request via React cache().
  */
-async function getCategoryData(slug: string): Promise<CategoryData | null> {
+const getCategoryData = cache(async (slug: string): Promise<CategoryData | null> => {
+  const cacheKey = `shop_cat_${slug}`;
+  const cached = getCached<CategoryData>(cacheKey);
+  if (cached) return cached;
+
   // 1. Check if it's a known static category first
   const staticCopy = STATIC_COPY[slug];
 
@@ -60,17 +68,46 @@ async function getCategoryData(slug: string): Promise<CategoryData | null> {
       .limit(1)
       .get();
 
-    // 3. Fetch all categories for the sidebar/tabs
+    // 3. Fetch all categories to build hierarchical tree
     const allCatsSnap = await adminDb
       .collection('categories')
       .orderBy('order', 'asc')
-      .limit(20)
+      .limit(200)
       .get();
 
-    const allCategories: StorefrontCategory[] = allCatsSnap.docs.map((doc) => ({
-      id: doc.id,
-      name: doc.data().name as string,
-      slug: doc.data().slug as string,
+    const allCategoryNodes: CategoryNode[] = allCatsSnap.docs.map((doc) => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        name: d.name as string,
+        slug: d.slug as string,
+        description: (d.description as string) || '',
+        image: (d.image as string) || '',
+        blurb: (d.blurb as string) || '',
+        parentId: (d.parentId as string | null) ?? null,
+        depth: (d.depth as number) ?? 0,
+        order: (d.order as number) ?? 0,
+        isActive: d.isActive !== false,
+        createdAt: d.createdAt?.toDate ? d.createdAt.toDate() : new Date(),
+        updatedAt: d.updatedAt?.toDate ? d.updatedAt.toDate() : new Date(),
+      };
+    });
+
+    const activeNodes = allCategoryNodes.filter((n) => n.isActive);
+    const tree = buildCategoryTree(activeNodes);
+
+    // Get sub-categories for this category slug
+    let subCategories = getSubCategoriesForRootSlug(tree, slug);
+    if (subCategories.length === 0) {
+      subCategories = getSubCategoriesForRootSlug(DEFAULT_CATEGORY_TREE, slug);
+    }
+
+    const allCategories: StorefrontCategory[] = (
+      activeNodes.filter((n) => n.depth === 0 || n.parentId === null)
+    ).map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
     }));
 
     // 4. Fetch products from Firestore
@@ -113,45 +150,79 @@ async function getCategoryData(slug: string): Promise<CategoryData | null> {
       const catDoc = catSnap.docs[0];
       const catData = catDoc.data();
 
-      // Build page copy — use Firestore fields if available, fall back to static copy
       const heading = catData.heading || staticCopy?.heading || `${catData.name} Shoes`;
       const intro = catData.intro || staticCopy?.intro || catData.blurb || `Browse our ${catData.name} collection.`;
       const title = catData.metaTitle || staticCopy?.title || `${catData.name} Shoes Online Sri Lanka — New Step`;
       const description = catData.metaDescription || staticCopy?.description || `Shop ${catData.name} footwear with cash on delivery island-wide.`;
 
-      return { heading, intro, title, description, products: merged, categories: allCategories };
+      const result: CategoryData = {
+        heading,
+        intro,
+        title,
+        description,
+        products: merged,
+        categories: allCategories.length > 0 ? allCategories : [],
+        subCategories,
+      };
+      setCached(cacheKey, result, 120);
+      return result;
     }
 
     // 5. Not in Firestore — fall back to static copy with merged products
     if (staticCopy) {
-      return {
+      const result: CategoryData = {
         heading: staticCopy.heading,
         intro: staticCopy.intro,
         title: staticCopy.title,
         description: staticCopy.description,
         products: merged,
         categories: allCategories.length > 0 ? allCategories : [],
+        subCategories,
       };
+      setCached(cacheKey, result, 120);
+      return result;
     }
 
     // 6. Doesn't exist anywhere
     return null;
-  } catch (error) {
-    console.error(`Failed to fetch category "${slug}" from Firestore:`, error);
-    // On Firestore error, fall back to static copy if available
-    if (staticCopy) {
-      return {
-        heading: staticCopy.heading,
-        intro: staticCopy.intro,
-        title: staticCopy.title,
-        description: staticCopy.description,
-        products: byCategory(slug),
-        categories: [],
-      };
+  } catch (error: unknown) {
+    const err = error as { code?: number; message?: string } | undefined;
+    const isQuotaExceeded =
+      err?.code === 8 ||
+      err?.message?.includes('RESOURCE_EXHAUSTED') ||
+      err?.message?.includes('Quota exceeded');
+
+    if (isQuotaExceeded) {
+      console.warn(`[Storefront] Firestore quota exceeded while fetching category "${slug}". Serving from fallback catalog.`);
+    } else {
+      console.error(`Failed to fetch category "${slug}" from Firestore:`, err?.message || error);
     }
-    return null;
+
+    // Resilient fallback for ANY category so the storefront never crashes
+    const fallbackNode = DEFAULT_CATEGORY_TREE.find((n) => n.slug === slug || n.id === slug);
+    const fallbackName = fallbackNode?.name || slug.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+    const fallbackHeading = staticCopy?.heading || `${fallbackName} Shoes`;
+    const fallbackIntro = staticCopy?.intro || fallbackNode?.blurb || `Explore our ${fallbackName} collection.`;
+    const fallbackTitle = staticCopy?.title || `${fallbackName} Shoes Online Sri Lanka — New Step`;
+    const fallbackDesc = staticCopy?.description || `Shop ${fallbackName} footwear online with cash on delivery island-wide.`;
+
+    const fallbackProducts = byCategory(slug);
+    const finalProducts = fallbackProducts.length > 0 ? fallbackProducts : staticProducts.slice(0, 16);
+
+    const fallbackData: CategoryData = {
+      heading: fallbackHeading,
+      intro: fallbackIntro,
+      title: fallbackTitle,
+      description: fallbackDesc,
+      products: finalProducts,
+      categories: DEFAULT_CATEGORY_TREE.map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
+      subCategories: getSubCategoriesForRootSlug(DEFAULT_CATEGORY_TREE, slug),
+    };
+
+    setCached(cacheKey, fallbackData, 60);
+    return fallbackData;
   }
-}
+})
 
 // Revalidate every 2 minutes so new admin categories appear quickly
 export const revalidate = 120;
@@ -181,12 +252,16 @@ export default async function CategoryPage({
   if (!data) notFound();
 
   return (
-    <ShopBrowser
-      products={data.products}
-      heading={data.heading}
-      intro={data.intro}
-      categories={data.categories}
-      showCategoryTabs={false}
-    />
+    <Suspense fallback={<div className="min-h-screen bg-sand" />}>
+      <ShopBrowser
+        products={data.products}
+        heading={data.heading}
+        intro={data.intro}
+        categories={data.categories}
+        subCategories={data.subCategories}
+        showCategoryTabs={false}
+      />
+    </Suspense>
   );
 }
+

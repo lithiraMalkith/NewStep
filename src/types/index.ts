@@ -64,6 +64,8 @@ export interface AdminProduct {
   categoryLabel: string
   categories?: string[]
   categoryLabels?: string[]
+  subCategory?: string | null
+  subSubCategory?: string | null
   details: string[]
   variants: AdminVariant[]
   availabilityStatus: AvailabilityStatus
@@ -80,27 +82,30 @@ export interface AdminProduct {
   createdBy: string
 }
 
-// ─── Categories ───
+// ─── Categories (Hierarchical Tree) ───
 
-export interface SubCategory {
+export interface CategoryNode {
   id: string
   name: string
   slug: string
   description?: string
-}
-
-export interface Category {
-  id: string
-  name: string
-  slug: string
-  description?: string
-  image?: string
+  image?: string             // optional promo image
   blurb?: string
-  subCategories: SubCategory[]
-  order: number
+  parentId: string | null    // null = root category
+  depth: number              // 0 = root, 1 = sub, 2 = sub-sub
+  order: number              // sort order within siblings
+  isActive: boolean          // admin can disable without deleting
   createdAt: Date
   updatedAt: Date
 }
+
+/** Hydrated tree shape (used on client after fetching flat list) */
+export interface CategoryTreeNode extends CategoryNode {
+  children: CategoryTreeNode[]
+}
+
+/** Backward-compat alias */
+export type Category = CategoryNode
 
 // ─── Orders ───
 

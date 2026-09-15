@@ -36,8 +36,13 @@ export async function GET(req: NextRequest) {
       }
 
       return NextResponse.json({ success: true, data: orders })
-    } catch (error) {
-      console.error('GET /api/orders error:', error)
+    } catch (error: unknown) {
+      const err = error as { code?: number; message?: string } | undefined
+      if (err?.code === 8 || err?.message?.includes('RESOURCE_EXHAUSTED')) {
+        console.warn('[Orders] Firestore quota exceeded. Returning empty orders list.')
+        return NextResponse.json({ success: true, data: [], warning: 'Quota exceeded' })
+      }
+      console.error('GET /api/orders error:', err?.message || error)
       return NextResponse.json({ success: false, error: 'Failed to fetch orders' }, { status: 500 })
     }
   }, 'orders:read')

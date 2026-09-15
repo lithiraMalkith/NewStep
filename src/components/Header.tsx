@@ -9,6 +9,8 @@ import { categories as staticCategories, products } from "@/lib/products";
 import { LKR } from "@/lib/format";
 
 import { useAuth } from "@/contexts/auth-context";
+import type { CategoryTreeNode } from "@/types";
+import { DEFAULT_CATEGORY_TREE } from "@/lib/category-tree";
 
 // Static fallback nav — used if API call fails
 const STATIC_NAV = [
@@ -45,10 +47,20 @@ export default function Header() {
   const [query, setQuery] = useState("");
   const [navItems, setNavItems] = useState(STATIC_NAV);
   const [navCategories, setNavCategories] = useState<NavCategory[]>([]);
+  const [categoryTree, setCategoryTree] = useState<CategoryTreeNode[]>(DEFAULT_CATEGORY_TREE);
+  const [activeMegaCategory, setActiveMegaCategory] = useState<CategoryTreeNode | null>(null);
+  const [expandedMobileCats, setExpandedMobileCats] = useState<string[]>([]);
+  const megaTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const accountDropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Helper to get category tree node for an href
+  const getCategoryForHref = useCallback((href: string) => {
+    const slug = href.replace('/shop/', '').replace('/shop', '');
+    return categoryTree.find((c) => c.slug === slug);
+  }, [categoryTree]);
 
   // Fetch dynamic navigation categories from admin panel
   useEffect(() => {
@@ -57,22 +69,27 @@ export default function Header() {
       try {
         const res = await fetch('/api/storefront/navigation');
         const json = await res.json();
-        if (!cancelled && json.success && json.data?.length > 0) {
-          const cats: NavCategory[] = json.data;
-          setNavCategories(cats);
-          // Build nav: dynamic categories + Sale + All Shoes
-          const dynamicLinks = cats.map((c) => ({
-            href: `/shop/${c.slug}`,
-            label: c.name,
-          }));
-          // Append Sale if not already in categories
-          const hasSale = cats.some((c) => c.slug === 'sale');
-          if (!hasSale) {
-            dynamicLinks.push({ href: '/shop/sale', label: 'Sale' });
+        if (!cancelled && json.success) {
+          if (json.tree && Array.isArray(json.tree)) {
+            setCategoryTree(json.tree);
           }
-          // Always append All Shoes
-          dynamicLinks.push({ href: '/shop', label: 'All Shoes' });
-          setNavItems(dynamicLinks);
+          if (json.data?.length > 0) {
+            const cats: NavCategory[] = json.data;
+            setNavCategories(cats);
+            // Build nav: dynamic categories + Sale + All Shoes
+            const dynamicLinks = cats.map((c) => ({
+              href: `/shop/${c.slug}`,
+              label: c.name,
+            }));
+            // Append Sale if not already in categories
+            const hasSale = cats.some((c) => c.slug === 'sale');
+            if (!hasSale) {
+              dynamicLinks.push({ href: '/shop/sale', label: 'Sale' });
+            }
+            // Always append All Shoes
+            dynamicLinks.push({ href: '/shop', label: 'All Shoes' });
+            setNavItems(dynamicLinks);
+          }
         }
       } catch {
         // Keep static fallback — navbar is never empty
@@ -86,6 +103,7 @@ export default function Header() {
     setOpen(false);
     setSearchOpen(false);
     setAccountOpen(false);
+    setActiveMegaCategory(null);
   }, [pathname]);
 
   useEffect(() => {
@@ -202,17 +220,62 @@ export default function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden items-center gap-7 lg:flex">
-            {navItems.map((n) => (
-              <Link
-                key={n.href}
-                href={n.href}
-                className={`link-underline text-[15px] transition-colors ${pathname === n.href ? "font-semibold text-ink" : "text-muted hover:text-ink"
-                  }`}
-              >
-                {n.label}
-              </Link>
-            ))}
+          <nav className="hidden items-center gap-6 lg:flex">
+            {navItems.map((n) => {
+              const cat = getCategoryForHref(n.href);
+              const hasSub = cat && cat.children && cat.children.length > 0;
+              const isCurrent = pathname === n.href;
+              const isMegaOpen = activeMegaCategory?.slug === cat?.slug;
+
+              return (
+                <div
+                  key={n.href}
+                  className="relative flex items-center h-full py-4"
+                  onMouseEnter={() => {
+                    if (megaTimeoutRef.current) clearTimeout(megaTimeoutRef.current);
+                    if (hasSub) {
+                      setActiveMegaCategory(cat);
+                    } else {
+                      setActiveMegaCategory(null);
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    if (hasSub) {
+                      megaTimeoutRef.current = setTimeout(() => {
+                        setActiveMegaCategory(null);
+                      }, 300);
+                    }
+                  }}
+                >
+                  <Link
+                    href={n.href}
+                    onMouseEnter={() => {
+                      if (megaTimeoutRef.current) clearTimeout(megaTimeoutRef.current);
+                      if (hasSub) setActiveMegaCategory(cat);
+                    }}
+                    onClick={() => setActiveMegaCategory(null)}
+                    className={`link-underline text-[15px] transition-colors flex items-center gap-1.5 ${
+                      isCurrent || isMegaOpen ? "font-semibold text-ink" : "text-muted hover:text-ink"
+                    }`}
+                  >
+                    <span>{n.label}</span>
+                    {hasSub && (
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        className={`transition-transform duration-200 ${isMegaOpen ? "rotate-180 text-ink" : "text-muted/60"}`}
+                      >
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    )}
+                  </Link>
+                </div>
+              );
+            })}
           </nav>
 
           {/* Search Trigger, Cart, and User Profile Avatar (right-most) */}
@@ -416,6 +479,89 @@ export default function Header() {
             </div>
           </div>
         </div>
+        {/* Full-width Desktop Mega-Menu Dropdown */}
+        {activeMegaCategory && activeMegaCategory.children && activeMegaCategory.children.length > 0 && (
+          <div
+            onMouseEnter={() => {
+              if (megaTimeoutRef.current) clearTimeout(megaTimeoutRef.current);
+            }}
+            onMouseLeave={() => {
+              megaTimeoutRef.current = setTimeout(() => {
+                setActiveMegaCategory(null);
+              }, 200);
+            }}
+            className="absolute left-0 right-0 top-full bg-paper/98 backdrop-blur-md border-b border-line shadow-2xl z-50 transition-all duration-200"
+          >
+            <div className="container-x py-8">
+              <div className="grid grid-cols-12 gap-8 items-start">
+                {/* Left columns: Subcategories groups */}
+                <div className="col-span-8 lg:col-span-9 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {activeMegaCategory.children.map((sub) => (
+                    <div key={sub.id} className="space-y-3">
+                      <Link
+                        href={`/shop/${activeMegaCategory.slug}?sub=${sub.slug}`}
+                        onClick={() => setActiveMegaCategory(null)}
+                        className="group flex items-center gap-1.5 text-[13px] font-bold tracking-wider text-ink uppercase hover:text-muted transition-colors border-b border-line/60 pb-1.5"
+                      >
+                        <span>{sub.name}</span>
+                        <span aria-hidden="true" className="text-[11px] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                      </Link>
+
+                      {sub.children && sub.children.length > 0 ? (
+                        <ul className="space-y-2">
+                          {sub.children.map((child) => (
+                            <li key={child.id}>
+                              <Link
+                                href={`/shop/${activeMegaCategory.slug}?sub=${sub.slug}&subsub=${child.slug}`}
+                                onClick={() => setActiveMegaCategory(null)}
+                                className="text-[13px] text-muted hover:text-ink transition-colors block py-0.5"
+                              >
+                                {child.name}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <Link
+                          href={`/shop/${activeMegaCategory.slug}?sub=${sub.slug}`}
+                          onClick={() => setActiveMegaCategory(null)}
+                          className="text-xs text-muted hover:underline block"
+                        >
+                          View all {sub.name}
+                        </Link>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Right column: Promotional category image banner */}
+                <div className="col-span-4 lg:col-span-3">
+                  <Link
+                    href={`/shop/${activeMegaCategory.slug}`}
+                    onClick={() => setActiveMegaCategory(null)}
+                    className="group relative block overflow-hidden rounded-2xl aspect-[4/3] bg-mist"
+                  >
+                    <Image
+                      src={activeMegaCategory.image || (activeMegaCategory.slug === 'mens' ? '/images/banner.jpg' : activeMegaCategory.slug === 'womens' ? '/images/p4.jpg' : '/images/p6.jpg')}
+                      alt={activeMegaCategory.name}
+                      fill
+                      className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/25 to-transparent" />
+                    <div className="absolute bottom-4 left-4 right-4 text-paper">
+                      <p className="eyebrow text-white/70 text-[9px] mb-1">Featured</p>
+                      <h4 className="display text-base tracking-tight mb-1">{activeMegaCategory.name} Collection</h4>
+                      <p className="text-xs text-white/80 line-clamp-1">{activeMegaCategory.blurb || "Explore latest styles & arrivals"}</p>
+                      <span className="mt-2 inline-flex items-center text-xs font-semibold underline underline-offset-4 group-hover:text-cream transition-colors">
+                        Shop All {activeMegaCategory.name} &rarr;
+                      </span>
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Interactive Search Modal / Overlay */}
@@ -648,20 +794,79 @@ export default function Header() {
           </div>
 
           <ul className="mt-6 space-y-1 overflow-y-auto flex-1">
-            {navItems.filter(n => n.href !== '/shop').map((n) => (
-              <li key={n.href}>
-                <Link
-                  href={n.href}
-                  className="display block py-2.5 text-2xl font-medium text-ink hover:text-muted transition-colors"
-                >
-                  {n.label}
-                </Link>
-              </li>
-            ))}
+            {navItems.filter(n => n.href !== '/shop').map((n) => {
+              const cat = getCategoryForHref(n.href);
+              const hasSub = cat && cat.children && cat.children.length > 0;
+              const isExpanded = expandedMobileCats.includes(n.href);
+
+              return (
+                <li key={n.href} className="border-b border-line/40 last:border-0 pb-1">
+                  <div className="flex items-center justify-between">
+                    <Link
+                      href={n.href}
+                      onClick={() => setOpen(false)}
+                      className="display block py-2.5 text-2xl font-medium text-ink hover:text-muted transition-colors flex-1"
+                    >
+                      {n.label}
+                    </Link>
+                    {hasSub && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setExpandedMobileCats((prev) =>
+                            prev.includes(n.href)
+                              ? prev.filter((h) => h !== n.href)
+                              : [...prev, n.href]
+                          );
+                        }}
+                        className="p-2 text-ink/70 hover:text-ink transition-colors"
+                        aria-label={`Toggle ${n.label} subcategories`}
+                      >
+                        <span className="text-xl font-light">{isExpanded ? '−' : '+'}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Accordion Subcategories */}
+                  {hasSub && isExpanded && (
+                    <div className="pl-3 pb-3 pt-1 space-y-3">
+                      {cat.children.map((sub) => (
+                        <div key={sub.id} className="space-y-1">
+                          <Link
+                            href={`/shop/${cat.slug}?sub=${sub.slug}`}
+                            onClick={() => setOpen(false)}
+                            className="text-sm font-semibold text-ink block py-1 hover:text-muted transition-colors uppercase tracking-wider"
+                          >
+                            {sub.name}
+                          </Link>
+                          {sub.children && sub.children.length > 0 && (
+                            <div className="pl-3 space-y-1">
+                              {sub.children.map((child) => (
+                                <Link
+                                  key={child.id}
+                                  href={`/shop/${cat.slug}?sub=${sub.slug}&subsub=${child.slug}`}
+                                  onClick={() => setOpen(false)}
+                                  className="text-xs text-muted block py-1 hover:text-ink transition-colors"
+                                >
+                                  {child.name}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
 
             <li className="pt-2">
               <Link
                 href="/shop"
+                onClick={() => setOpen(false)}
                 className="display block py-2.5 text-2xl font-medium text-ink hover:text-muted transition-colors"
               >
                 All Shoes

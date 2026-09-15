@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
+import { getFriendlyAuthErrorMessage } from '@/lib/auth-errors'
 
 export default function CustomerRegisterPage() {
   const router = useRouter()
@@ -33,13 +34,8 @@ export default function CustomerRegisterPage() {
     try {
       await signUpWithEmail(email, password, displayName)
       router.push('/account/profile')
-    } catch (err: any) {
-      const msg = err?.message || 'Failed to create account.'
-      if (msg.includes('email-already-in-use')) {
-        setError('This email is already registered. Please sign in instead.')
-      } else {
-        setError(msg)
-      }
+    } catch (err: unknown) {
+      setError(getFriendlyAuthErrorMessage(err, 'Failed to create account. Please check your information.'))
     } finally {
       setLoading(false)
     }
@@ -51,8 +47,8 @@ export default function CustomerRegisterPage() {
     try {
       await signInWithGoogle()
       router.push('/account/profile')
-    } catch (err: any) {
-      setError(err?.message || 'Google sign-up could not be completed.')
+    } catch (err: unknown) {
+      setError(getFriendlyAuthErrorMessage(err, 'Google sign-up could not be completed.'))
     } finally {
       setLoading(false)
     }

@@ -152,9 +152,21 @@ export async function fetchCustomerOrders(email?: string, phone?: string, userId
     console.error('Error fetching server orders:', err)
   }
 
-  // If email, phone, or userId was provided but API failed, return empty array to prevent 
-  // showing local orders that don't belong to the logged-in user.
-  if (email || phone || userId) return []
+  // If email, phone, or userId was provided but API failed (e.g. quota exceeded or offline),
+  // fallback to showing local orders that match the user's email or phone!
+  if (email || phone || userId) {
+    const matchingLocal = localList.filter((o) => {
+      const matchEmail = email && o.customer?.email && o.customer.email.toLowerCase() === email.toLowerCase()
+      const matchPhone = phone && o.customer?.phone && o.customer.phone.replace(/\s|-/g, '') === phone.replace(/\s|-/g, '')
+      return matchEmail || matchPhone
+    })
+    if (matchingLocal.length > 0) {
+      return matchingLocal.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+    }
+    return []
+  }
 
   // If not logged in, fallback to showing local guest orders
   return localList.sort(

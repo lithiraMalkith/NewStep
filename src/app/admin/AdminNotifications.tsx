@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+'use client'
+
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { fetchOrders, fetchInventory } from '@/lib/admin-client'
@@ -12,62 +14,101 @@ export default function AdminNotifications() {
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'orders' | 'inventory'>('orders')
   const [pendingOrders, setPendingOrders] = useState<AdminOrder[]>([])
+  const [totalPendingCount, setTotalPendingCount] = useState(0)
   const [lowStockItems, setLowStockItems] = useState<AdminProduct[]>([])
-  const [unseenCount, setUnseenCount] = useState(0)
+  const [totalLowStockCount, setTotalLowStockCount] = useState(0)
   const seenRef = useRef<Set<string>>(new Set())
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+  const poll = useCallback(async () => {
+    if (!user) return
+    try {
+      const token = await user.getIdToken()
+
+      // 1. Poll pending orders if allowed
+      if (hasPermission('orders:read')) {
+        const orders = await fetchOrders(token, { status: 'pending' })
+        const pendingList = Array.isArray(orders) ? orders : []
+        setTotalPendingCount(pendingList.length)
+        setPendingOrders(pendingList.slice(0, 8))
+
+        // Sound chime for brand new orders that arrived after initial load
+        const newOrders = pendingList.filter((o) => !seenRef.current.has(o.id))
+        if (newOrders.length > 0 && seenRef.current.size > 0) {
+          try {
+            const ctx = new AudioContext()
+            const osc = ctx.createOscillator()
+            const gain = ctx.createGain()
+            osc.connect(gain)
+            gain.connect(ctx.destination)
+            osc.frequency.value = 800
+            gain.gain.value = 0.1
+            osc.start()
+            setTimeout(() => {
+              osc.stop()
+              ctx.close()
+            }, 150)
+          } catch {
+            /* audio not supported */
+          }
+        }
+        pendingList.forEach((o) => seenRef.current.add(o.id))
+      }
+
+      // 2. Poll low-stock items if allowed (stock <= 5 units)
+      if (hasPermission('inventory:read')) {
+        const inventory = await fetchInventory(token)
+        const inventoryList = Array.isArray(inventory) ? inventory : []
+        const low = inventoryList.filter((p) => {
+          const stock = totalStock(p.variants || [])
+          return stock <= 5
+        })
+        setTotalLowStockCount(low.length)
+        setLowStockItems(low.slice(0, 8))
+      }
+    } catch {
+      // Silently fail to avoid UI crashes
+    }
+  }, [user, hasPermission])
+
+  // Initial load and periodic polling + real-time event listeners
   useEffect(() => {
     if (!user) return
 
-    const poll = async () => {
-      try {
-        const token = await user.getIdToken()
-        let newCount = 0
+    poll()
+    const interval = setInterval(poll, 15000)
 
-        // Poll pending orders if allowed
-        if (hasPermission('orders:read')) {
-          const orders = await fetchOrders(token, { status: 'pending' })
-          setPendingOrders(orders.slice(0, 5))
+    // Intra-window notification event (e.g. order accepted, inventory restocked)
+    const handleRefresh = () => {
+      poll()
+    }
+    window.addEventListener('admin:notifications-refresh', handleRefresh)
 
-          const newOrders = orders.filter((o) => !seenRef.current.has(o.id))
-          if (newOrders.length > 0 && seenRef.current.size > 0) {
-            try {
-              const ctx = new AudioContext()
-              const osc = ctx.createOscillator()
-              const gain = ctx.createGain()
-              osc.connect(gain)
-              gain.connect(ctx.destination)
-              osc.frequency.value = 800
-              gain.gain.value = 0.1
-              osc.start()
-              setTimeout(() => { osc.stop(); ctx.close() }, 150)
-            } catch { /* audio not supported */ }
-          }
-          orders.forEach((o) => seenRef.current.add(o.id))
-          newCount += newOrders.length
-        }
-
-        // Poll low-stock items if allowed
-        if (hasPermission('inventory:read')) {
-          const inventory = await fetchInventory(token)
-          const low = inventory.filter((p) => {
-            const stock = totalStock(p.variants || [])
-            return stock <= 5
-          })
-          setLowStockItems(low.slice(0, 5))
-        }
-
-        setUnseenCount(newCount)
-      } catch {
-        // Silently fail
+    // Cross-tab synchronization via localStorage
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'admin:last-data-update') {
+        poll()
       }
     }
+    window.addEventListener('storage', handleStorage)
 
-    poll()
-    const interval = setInterval(poll, 30000)
-    return () => clearInterval(interval)
-  }, [user, hasPermission])
+    // Refresh when tab becomes visible or focused
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        poll()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleRefresh)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('admin:notifications-refresh', handleRefresh)
+      window.removeEventListener('storage', handleStorage)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleRefresh)
+    }
+  }, [user, poll])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -80,26 +121,31 @@ export default function AdminNotifications() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const totalBadge = unseenCount + (lowStockItems.length > 0 ? 1 : 0)
+  // Total count of actionable items (pending orders + low stock items)
+  const totalBadge = totalPendingCount + totalLowStockCount
 
   return (
     <div ref={dropdownRef} className="relative">
       <button
-        onClick={() => { setOpen(!open); setUnseenCount(0) }}
+        onClick={() => setOpen((prev) => !prev)}
         className="relative p-2 rounded-lg text-[#6B6B6B] hover:text-[#F0EDE8] hover:bg-[#1E1E1E] transition-colors"
         title="Notifications"
+        aria-label="Notifications"
       >
         <Bell className="w-5 h-5" />
         {totalBadge > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#E05252] text-white text-[10px] flex items-center justify-center font-bold">
-            {totalBadge}
+          <span
+            data-testid="notification-badge"
+            className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#E05252] text-white text-[10px] flex items-center justify-center font-bold shadow-xs"
+          >
+            {totalBadge > 99 ? '99+' : totalBadge}
           </span>
         )}
       </button>
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-84 sm:w-96 bg-[#141414] border border-[#24221F] rounded-xl shadow-2xl z-50 overflow-hidden">
-          {/* Header with Tabs */}
+          {/* Header with Tabs displaying full counts */}
           <div className="flex items-center justify-between border-b border-[#24221F] bg-[#0B0B0B] px-2 pt-2">
             <button
               onClick={() => setActiveTab('orders')}
@@ -110,7 +156,7 @@ export default function AdminNotifications() {
               }`}
             >
               <ShoppingCart className="w-3.5 h-3.5" />
-              Pending Orders ({pendingOrders.length})
+              Pending Orders ({totalPendingCount})
             </button>
             <button
               onClick={() => setActiveTab('inventory')}
@@ -121,7 +167,7 @@ export default function AdminNotifications() {
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5" />
-              Low Stock ({lowStockItems.length})
+              Low Stock ({totalLowStockCount})
             </button>
           </div>
 
@@ -145,7 +191,7 @@ export default function AdminNotifications() {
                       <div className="flex justify-between items-start">
                         <span className="text-sm font-mono text-[#F7F4EE] font-semibold">{order.orderRef}</span>
                         <span className="text-xs text-[#8A8478]">
-                          {new Date(order.createdAt).toLocaleTimeString('en-LK', { hour: '2-digit', minute: '2-digit' })}
+                          {order.createdAt ? new Date(order.createdAt).toLocaleTimeString('en-LK', { hour: '2-digit', minute: '2-digit' }) : ''}
                         </span>
                       </div>
                       <p className="text-sm text-[#FAF8F5] mt-0.5">{order.customer?.name}</p>

@@ -31,6 +31,8 @@ import {
   ClipboardList,
 } from 'lucide-react'
 import AdminNotifications from './AdminNotifications'
+import { AdminThemeProvider } from '@/contexts/admin-theme-context'
+import AdminThemeSwitcher from '@/components/admin/AdminThemeSwitcher'
 
 interface SidebarItem {
   label: string
@@ -183,129 +185,137 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <p className="text-xs text-[#A39E93] capitalize">{role || 'user'}</p>
           </div>
         )}
-        <button
-          onClick={signOut}
-          className={cn(
-            'flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#A39E93] hover:text-[#E05252] hover:bg-[#E05252]/10 transition-colors w-full',
-            collapsed && 'justify-center'
-          )}
-          title="Sign out"
-        >
-          <LogOut className="w-4 h-4" />
-          {!collapsed && <span>Sign out</span>}
-        </button>
+        <div className={cn('flex items-center gap-2', collapsed && 'flex-col')}>
+          <button
+            onClick={signOut}
+            className={cn(
+              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#A39E93] hover:text-[#E05252] hover:bg-[#E05252]/10 transition-colors flex-1',
+              collapsed && 'justify-center w-full'
+            )}
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+            {!collapsed && <span>Sign out</span>}
+          </button>
+          <AdminThemeSwitcher collapsed={collapsed} />
+        </div>
       </div>
     </>
   )
 
   return (
-    <div className="min-h-screen bg-[#0B0B0B] text-[#F7F4EE]" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-      {/* Desktop sidebar */}
-      <aside
-        className={cn(
-          'fixed left-0 top-0 bottom-0 z-40 hidden lg:flex flex-col bg-[#121212] border-r border-[#24221F] transition-all duration-300',
-          collapsed ? 'w-[72px]' : 'w-[260px]'
-        )}
-      >
-        <NavContent />
-      </aside>
-
-      {/* Mobile sidebar */}
-      <div
-        className={cn('fixed inset-0 z-50 lg:hidden', mobileOpen ? '' : 'pointer-events-none')}
-      >
-        <div
-          onClick={() => setMobileOpen(false)}
-          className={cn('absolute inset-0 bg-black/70 transition-opacity', mobileOpen ? 'opacity-100' : 'opacity-0')}
-        />
+    <AdminThemeProvider>
+      <div className="admin-shell min-h-screen bg-[#0B0B0B] text-[#F7F4EE] transition-colors duration-200" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+        {/* Desktop sidebar */}
         <aside
           className={cn(
-            'absolute left-0 top-0 bottom-0 w-[260px] bg-[#121212] border-r border-[#24221F] flex flex-col transition-transform duration-300',
-            mobileOpen ? 'translate-x-0' : '-translate-x-full'
+            'fixed left-0 top-0 bottom-0 z-40 hidden lg:flex flex-col bg-[#121212] border-r border-[#24221F] transition-all duration-300',
+            collapsed ? 'w-[72px]' : 'w-[260px]'
           )}
         >
-          <div className="flex items-center justify-between px-4 h-16 border-b border-[#24221F]">
-            <span className="text-xl font-bold text-[#FFFFFF]">
-              New<span className="text-[#D4CBBF]">Step</span>
-            </span>
-            <button onClick={() => setMobileOpen(false)} className="p-1.5 text-[#A39E93] hover:text-[#FFFFFF]">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-            {filteredItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                  isActive(item.href)
-                    ? 'bg-[#F7F4EE] text-[#0B0B0B] font-semibold shadow-xs'
-                    : 'text-[#A39E93] hover:text-[#FFFFFF] hover:bg-[#1A1A1A]'
-                )}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </Link>
-            ))}
-          </nav>
-          <div className="border-t border-[#24221F] p-4">
-            <p className="text-sm text-[#F7F4EE] truncate">{user.email}</p>
-            <p className="text-xs text-[#A39E93] capitalize mb-3">{role || 'user'}</p>
-            <button onClick={signOut} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#A39E93] hover:text-[#E05252] w-full">
-              <LogOut className="w-4 h-4" /> Sign out
-            </button>
-          </div>
+          <NavContent />
         </aside>
-      </div>
 
-      {/* Top bar */}
-      <header
-        className={cn(
-          'sticky top-0 z-30 bg-[#0B0B0B]/80 backdrop-blur-md border-b border-[#24221F] transition-all duration-300',
-          collapsed ? 'lg:ml-[72px]' : 'lg:ml-[260px]'
-        )}
-      >
-        <div className="flex items-center justify-between px-4 h-14">
-          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg text-[#A39E93] hover:text-[#FFFFFF] lg:hidden">
-            <Menu className="w-5 h-5" />
-          </button>
+        {/* Mobile sidebar */}
+        <div
+          className={cn('fixed inset-0 z-50 lg:hidden', mobileOpen ? '' : 'pointer-events-none')}
+        >
+          <div
+            onClick={() => setMobileOpen(false)}
+            className={cn('absolute inset-0 bg-black/70 transition-opacity', mobileOpen ? 'opacity-100' : 'opacity-0')}
+          />
+          <aside
+            className={cn(
+              'absolute left-0 top-0 bottom-0 w-[260px] bg-[#121212] border-r border-[#24221F] flex flex-col transition-transform duration-300',
+              mobileOpen ? 'translate-x-0' : '-translate-x-full'
+            )}
+          >
+            <div className="flex items-center justify-between px-4 h-16 border-b border-[#24221F]">
+              <span className="text-xl font-bold text-[#FFFFFF]">
+                New<span className="text-[#D4CBBF]">Step</span>
+              </span>
+              <button onClick={() => setMobileOpen(false)} className="p-1.5 text-[#A39E93] hover:text-[#FFFFFF]">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+              {filteredItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                    isActive(item.href)
+                      ? 'bg-[#F7F4EE] text-[#0B0B0B] font-semibold shadow-xs'
+                      : 'text-[#A39E93] hover:text-[#FFFFFF] hover:bg-[#1A1A1A]'
+                  )}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </nav>
+            <div className="border-t border-[#24221F] p-4">
+              <p className="text-sm text-[#F7F4EE] truncate">{user.email}</p>
+              <p className="text-xs text-[#A39E93] capitalize mb-3">{role || 'user'}</p>
+              <div className="flex items-center gap-2">
+                <button onClick={signOut} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#A39E93] hover:text-[#E05252] flex-1">
+                  <LogOut className="w-4 h-4" /> Sign out
+                </button>
+                <AdminThemeSwitcher collapsed={false} />
+              </div>
+            </div>
+          </aside>
+        </div>
 
-          <div className="flex-1" />
+        {/* Top bar */}
+        <header
+          className={cn(
+            'sticky top-0 z-30 bg-[#0B0B0B]/80 backdrop-blur-md border-b border-[#24221F] transition-all duration-300',
+            collapsed ? 'lg:ml-[72px]' : 'lg:ml-[260px]'
+          )}
+        >
+          <div className="flex items-center justify-between px-4 h-14">
+            <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg text-[#A39E93] hover:text-[#FFFFFF] lg:hidden">
+              <Menu className="w-5 h-5" />
+            </button>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              target="_blank"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#D4CBBF] hover:text-[#FFFFFF] hover:bg-[#1A1A1A] transition-colors border border-[#2E2A24]"
-              title="Open storefront in new tab"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>View Store</span>
-            </Link>
+            <div className="flex-1" />
 
-            <span className="hidden md:inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F7F4EE]/10 text-[#F7F4EE] border border-[#F7F4EE]/30 capitalize">
-              {role === 'superadmin' ? 'Super Admin' : (role ? role.replace('_', ' ') : 'Staff')}
-            </span>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                target="_blank"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#D4CBBF] hover:text-[#FFFFFF] hover:bg-[#1A1A1A] transition-colors border border-[#2E2A24]"
+                title="Open storefront in new tab"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>View Store</span>
+              </Link>
 
-            <AdminNotifications />
-            <div className="w-8 h-8 rounded-full bg-[#F7F4EE] flex items-center justify-center text-[#0B0B0B] text-sm font-bold shadow-xs">
-              {(user.email?.[0] || 'A').toUpperCase()}
+              <span className="hidden md:inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F7F4EE]/10 text-[#F7F4EE] border border-[#F7F4EE]/30 capitalize">
+                {role === 'superadmin' ? 'Super Admin' : (role ? role.replace('_', ' ') : 'Staff')}
+              </span>
+
+              <AdminNotifications />
+              <div className="w-8 h-8 rounded-full bg-[#F7F4EE] flex items-center justify-center text-[#0B0B0B] text-sm font-bold shadow-xs">
+                {(user.email?.[0] || 'A').toUpperCase()}
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Content */}
-      <main
-        ref={contentRef}
-        className={cn(
-          'p-6 transition-all duration-300 min-h-[calc(100vh-56px)]',
-          collapsed ? 'lg:ml-[72px]' : 'lg:ml-[260px]'
-        )}
-      >
-        {children}
-      </main>
-    </div>
+        {/* Content */}
+        <main
+          ref={contentRef}
+          className={cn(
+            'p-6 transition-all duration-300 min-h-[calc(100vh-56px)]',
+            collapsed ? 'lg:ml-[72px]' : 'lg:ml-[260px]'
+          )}
+        >
+          {children}
+        </main>
+      </div>
+    </AdminThemeProvider>
   )
 }

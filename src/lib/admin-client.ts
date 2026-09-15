@@ -48,6 +48,19 @@ export async function fetchDashboardStats(token: string): Promise<DashboardStats
   return fetchApi<DashboardStats>('/api/dashboard', token)
 }
 
+// ─── Notification & Real-time Event Broadcaster ───
+
+export function notifyAdminDataChange(type: 'orders' | 'inventory' | 'products' = 'orders') {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('admin:notifications-refresh', { detail: { type } }))
+    try {
+      localStorage.setItem('admin:last-data-update', `${type}:${Date.now()}`)
+    } catch {
+      // ignore storage errors
+    }
+  }
+}
+
 // ─── Products ───
 
 export async function fetchProducts(token: string, params?: Record<string, string>): Promise<AdminProduct[]> {
@@ -60,23 +73,29 @@ export async function fetchProduct(token: string, id: string): Promise<AdminProd
 }
 
 export async function createProduct(token: string, payload: Partial<AdminProduct>): Promise<AdminProduct> {
-  return fetchApi<AdminProduct>('/api/products', token, {
+  const result = await fetchApi<AdminProduct>('/api/products', token, {
     method: 'POST',
     body: JSON.stringify(payload),
   })
+  notifyAdminDataChange('products')
+  return result
 }
 
 export async function updateProduct(token: string, id: string, payload: Partial<AdminProduct>): Promise<{ id: string; message: string }> {
-  return fetchApi<{ id: string; message: string }>(`/api/products/${id}`, token, {
+  const result = await fetchApi<{ id: string; message: string }>(`/api/products/${id}`, token, {
     method: 'PUT',
     body: JSON.stringify(payload),
   })
+  notifyAdminDataChange('products')
+  return result
 }
 
 export async function deleteProduct(token: string, id: string): Promise<{ id: string; message: string }> {
-  return fetchApi<{ id: string; message: string }>(`/api/products/${id}`, token, {
+  const result = await fetchApi<{ id: string; message: string }>(`/api/products/${id}`, token, {
     method: 'DELETE',
   })
+  notifyAdminDataChange('products')
+  return result
 }
 
 // ─── Orders ───
@@ -95,20 +114,24 @@ export async function updateOrderStatus(
   id: string,
   payload: { status: string; note?: string; cancellationReason?: string; trackingNumber?: string }
 ): Promise<{ id: string; message: string }> {
-  return fetchApi<{ id: string; message: string }>(`/api/orders/${id}`, token, {
+  const result = await fetchApi<{ id: string; message: string }>(`/api/orders/${id}`, token, {
     method: 'PUT',
     body: JSON.stringify(payload),
   })
+  notifyAdminDataChange('orders')
+  return result
 }
 
 export async function createOrder(
   token: string,
   payload: Record<string, unknown>
 ): Promise<AdminOrder> {
-  return fetchApi<AdminOrder>('/api/orders', token, {
+  const result = await fetchApi<AdminOrder>('/api/orders', token, {
     method: 'POST',
     body: JSON.stringify(payload),
   })
+  notifyAdminDataChange('orders')
+  return result
 }
 
 // ─── Customers ───
@@ -153,6 +176,16 @@ export async function deleteCategory(token: string, id: string): Promise<{ id: s
   })
 }
 
+export async function reorderCategories(
+  token: string,
+  updates: { id: string; order: number; parentId?: string | null }[]
+): Promise<{ message: string }> {
+  return fetchApi<{ message: string }>('/api/categories/reorder', token, {
+    method: 'POST',
+    body: JSON.stringify({ updates }),
+  })
+}
+
 // ─── Inventory ───
 
 export async function fetchInventory(token: string): Promise<AdminProduct[]> {
@@ -168,10 +201,12 @@ export async function updateInventoryStock(
     colours?: { colour: string; stockQty: number; sku?: string }[]
   }[]
 ): Promise<{ id: string; message: string }> {
-  return fetchApi<{ id: string; message: string }>(`/api/inventory/${productId}`, token, {
+  const result = await fetchApi<{ id: string; message: string }>(`/api/inventory/${productId}`, token, {
     method: 'PATCH',
     body: JSON.stringify({ variants: variantUpdates }),
   })
+  notifyAdminDataChange('inventory')
+  return result
 }
 
 // ─── Messages ───

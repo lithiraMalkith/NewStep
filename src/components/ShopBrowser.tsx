@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useSearchParams, usePathname } from "next/navigation";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "@/lib/gsap-config";
 import ProductCard from "./ProductCard";
 import type { Product } from "@/lib/types";
+import type { CategoryTreeNode } from "@/types";
 
 const PAGE_SIZE = 12;
 
@@ -34,17 +36,26 @@ function ShopBrowserInner({
   heading,
   intro,
   categories,
+  subCategories,
   showCategoryTabs = true,
 }: {
   products: Product[];
   heading: string;
   intro?: string;
   categories?: StorefrontCategory[];
+  subCategories?: CategoryTreeNode[];
   showCategoryTabs?: boolean;
 }) {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const urlQuery = searchParams.get("q") || "";
+  const subCategoryParam = searchParams.get("sub") || "";
+  const subSubCategoryParam = searchParams.get("subsub") || "";
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const activeSubNode = useMemo(() => {
+    return subCategories?.find((s) => s.slug === subCategoryParam);
+  }, [subCategories, subCategoryParam]);
 
   const [searchQuery, setSearchQuery] = useState(urlQuery);
   const [sizes, setSizes] = useState<number[]>([]);
@@ -54,16 +65,34 @@ function ShopBrowserInner({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
 
-  // Build dynamic category filter tabs
-  const categoryTabs = categories && categories.length > 0
-    ? [{ id: "all", label: "All" }, ...categories.map((c) => ({ id: c.slug, label: c.name }))]
-    : [
-        { id: "all", label: "All" },
+  // Build dynamic category filter tabs with deduplication
+  const categoryTabs = useMemo(() => {
+    const tabs = [{ id: "all", label: "All" }];
+    const seen = new Set<string>(["all"]);
+
+    if (categories && categories.length > 0) {
+      for (const c of categories) {
+        if (c.slug && !seen.has(c.slug)) {
+          seen.add(c.slug);
+          tabs.push({ id: c.slug, label: c.name });
+        }
+      }
+    } else {
+      const fallback = [
         { id: "mens", label: "Men's" },
         { id: "womens", label: "Women's" },
         { id: "kids", label: "Kids'" },
         { id: "sale", label: "Sale" },
       ];
+      for (const f of fallback) {
+        if (!seen.has(f.id)) {
+          seen.add(f.id);
+          tabs.push(f);
+        }
+      }
+    }
+    return tabs;
+  }, [categories]);
 
   const [categoryFilter, setCategoryFilter] = useState("all");
 
@@ -83,7 +112,7 @@ function ShopBrowserInner({
   // Reset page whenever filters change
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, sizes, bands, inStockOnly, sort, categoryFilter]);
+  }, [searchQuery, sizes, bands, inStockOnly, sort, categoryFilter, subCategoryParam, subSubCategoryParam]);
 
   const toggle = <T,>(list: T[], value: T, set: (v: T[]) => void) =>
     set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -102,6 +131,20 @@ function ShopBrowserInner({
         p.details?.some((d) => d?.toLowerCase().includes(q));
 
       const catOk = categoryFilter === "all" || p.category === categoryFilter;
+
+      const subOk =
+        !subCategoryParam ||
+        p.subCategory === subCategoryParam ||
+        p.categories?.includes(subCategoryParam) ||
+        p.categoryLabel?.toLowerCase().includes(subCategoryParam.toLowerCase()) ||
+        p.name?.toLowerCase().includes(subCategoryParam.toLowerCase()) ||
+        p.subtitle?.toLowerCase().includes(subCategoryParam.toLowerCase());
+
+      const subSubOk =
+        !subSubCategoryParam ||
+        p.subSubCategory === subSubCategoryParam ||
+        p.categories?.includes(subSubCategoryParam) ||
+        p.name?.toLowerCase().includes(subSubCategoryParam.toLowerCase());
 
       const sizeOk =
         sizes.length === 0 ||
@@ -127,7 +170,7 @@ function ShopBrowserInner({
           return (v.stockQty ?? 0) > 0;
         });
 
-      return queryOk && catOk && sizeOk && bandOk && stockOk;
+      return queryOk && catOk && subOk && subSubOk && sizeOk && bandOk && stockOk;
     });
 
     if (sort === "low") out = [...out].sort((a, b) => a.price - b.price);
@@ -139,7 +182,7 @@ function ShopBrowserInner({
       return af - bf;
     });
     return out;
-  }, [products, searchQuery, sizes, bands, inStockOnly, sort, categoryFilter]);
+  }, [products, searchQuery, sizes, bands, inStockOnly, sort, categoryFilter, subCategoryParam, subSubCategoryParam]);
 
   // Paginated slice
   const visibleResults = results.slice(0, page * PAGE_SIZE);
@@ -243,6 +286,36 @@ function ShopBrowserInner({
                 </button>
               </span>
             )}
+            {subCategoryParam && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-ink text-paper px-3 py-1 text-xs font-medium capitalize">
+                {activeSubNode?.name || subCategoryParam.replace(/-/g, ' ')}
+                <Link
+                  href={pathname}
+                  className="rounded-full p-0.5 hover:bg-paper/20 transition-colors"
+                  aria-label="Clear sub-category filter"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </Link>
+              </span>
+            )}
+            {subSubCategoryParam && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-mist border border-line text-ink px-3 py-1 text-xs font-medium capitalize">
+                {subSubCategoryParam.replace(/-/g, ' ')}
+                <Link
+                  href={`${pathname}?sub=${subCategoryParam}`}
+                  className="rounded-full p-0.5 hover:bg-ink/10 transition-colors"
+                  aria-label="Clear sub-sub-category filter"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </Link>
+              </span>
+            )}
           </div>
         </div>
 
@@ -283,7 +356,7 @@ function ShopBrowserInner({
         </div>
       </header>
 
-      {/* Dynamic Category Tabs — hidden on individual category pages */}
+      {/* Dynamic Category Tabs — for /shop page */}
       {showCategoryTabs && (
         <div className="mt-6 flex flex-wrap gap-2">
           {categoryTabs.map((tab) => (
@@ -302,6 +375,79 @@ function ShopBrowserInner({
         </div>
       )}
 
+      {/* Hierarchical Sub-Category Filter Chips — for category pages */}
+      {!showCategoryTabs && subCategories && subCategories.length > 0 && (
+        <div className="mt-6 space-y-3">
+          {/* Level 1: Sub-categories (e.g., Footwear, Clothing, Accessories) */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted mr-1 hidden sm:inline">
+              Collection:
+            </span>
+            <Link
+              href={pathname}
+              className={`px-4 py-1.5 rounded-full text-xs sm:text-sm border transition-all font-medium ${
+                !subCategoryParam
+                  ? "bg-ink text-paper border-ink shadow-xs"
+                  : "border-line text-muted hover:border-ink hover:text-ink bg-paper"
+              }`}
+            >
+              All {heading.replace(" Shoes", "")}
+            </Link>
+            {subCategories.map((sub) => {
+              const isActive = subCategoryParam === sub.slug;
+              return (
+                <Link
+                  key={sub.id}
+                  href={`${pathname}?sub=${sub.slug}`}
+                  className={`px-4 py-1.5 rounded-full text-xs sm:text-sm border transition-all font-medium ${
+                    isActive
+                      ? "bg-ink text-paper border-ink shadow-xs"
+                      : "border-line text-muted hover:border-ink hover:text-ink bg-paper"
+                  }`}
+                >
+                  {sub.name}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Level 2: Sub-sub-categories (e.g., Sports, Casual, Formal) */}
+          {activeSubNode && activeSubNode.children && activeSubNode.children.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 pl-0 sm:pl-3 pt-2 border-t border-line/40 animate-in fade-in duration-200">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted mr-1 hidden sm:inline">
+                {activeSubNode.name}:
+              </span>
+              <Link
+                href={`${pathname}?sub=${activeSubNode.slug}`}
+                className={`px-3 py-1 rounded-full text-xs border transition-all ${
+                  !subSubCategoryParam
+                    ? "bg-ink/85 text-paper border-ink font-medium shadow-xs"
+                    : "border-line/70 text-muted hover:border-ink hover:text-ink bg-mist/30"
+                }`}
+              >
+                All {activeSubNode.name}
+              </Link>
+              {activeSubNode.children.map((child) => {
+                const isChildActive = subSubCategoryParam === child.slug;
+                return (
+                  <Link
+                    key={child.id}
+                    href={`${pathname}?sub=${activeSubNode.slug}&subsub=${child.slug}`}
+                    className={`px-3 py-1 rounded-full text-xs border transition-all ${
+                      isChildActive
+                        ? "bg-ink/85 text-paper border-ink font-medium shadow-xs"
+                        : "border-line/70 text-muted hover:border-ink hover:text-ink bg-mist/30"
+                    }`}
+                  >
+                    {child.name}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="mt-8 grid gap-10 lg:grid-cols-[220px_1fr]">
         <aside className="hidden lg:block">{Filters}</aside>
 
@@ -315,35 +461,29 @@ function ShopBrowserInner({
                   onClick={() => { setSizes([]); setBands([]); setInStockOnly(false); setSearchQuery(""); setCategoryFilter("all"); }}
                   className="btn btn-outline mt-5 inline-block text-xs"
                 >
-                  Reset all filters
+                  Clear all filters
                 </button>
               )}
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-9 md:grid-cols-3 md:gap-x-6">
-                {visibleResults.map((p, i) => {
-                  // Tag items from the latest page batch for GSAP targeting
-                  const currentPageStart = (page - 1) * PAGE_SIZE;
-                  const isNewBatch = i >= currentPageStart;
-                  return (
-                    <div key={p.id} data-page={isNewBatch ? page : page - 1}>
-                      <ProductCard product={p} priority={i < 3} />
-                    </div>
-                  );
-                })}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-6 sm:gap-y-10 md:grid-cols-3">
+                {visibleResults.map((product, idx) => (
+                  <div key={product.id} data-page={Math.floor(idx / PAGE_SIZE) + 1}>
+                    <ProductCard product={product} />
+                  </div>
+                ))}
               </div>
 
-              {/* Load More */}
               {hasMore && (
-                <div className="mt-12 flex flex-col items-center gap-2">
+                <div className="mt-12 text-center">
                   <button
                     onClick={() => setPage((p) => p + 1)}
-                    className="btn btn-outline px-8 py-3 text-sm"
+                    className="btn btn-outline min-w-[200px] text-xs py-3"
                   >
-                    Show more shoes →
+                    Load More Footwear
                   </button>
-                  <p className="text-xs text-muted">
+                  <p className="mt-2 text-xs text-muted">
                     {results.length - visibleResults.length} more to show
                   </p>
                 </div>
@@ -376,6 +516,7 @@ export default function ShopBrowser(props: {
   heading: string;
   intro?: string;
   categories?: StorefrontCategory[];
+  subCategories?: CategoryTreeNode[];
   showCategoryTabs?: boolean;
 }) {
   return (

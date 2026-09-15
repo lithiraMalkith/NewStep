@@ -5,6 +5,7 @@ import { serializeDocs } from '@/lib/admin-service'
 import { productSchema } from '@/lib/validations'
 import { slugify, getAvailabilityStatus } from '@/lib/utils'
 import { logAudit } from '@/lib/audit'
+import { invalidateCache } from '@/lib/server-cache'
 
 // GET /api/products — List all products
 export async function GET(req: NextRequest) {
@@ -62,8 +63,8 @@ export async function POST(req: NextRequest) {
         ? data.categoryLabels
         : data.categoryLabel ? [data.categoryLabel] : []
 
-      const primaryCategory = categories[0] || data.category || ''
-      const primaryCategoryLabel = categoryLabels[0] || data.categoryLabel || ''
+      const primaryCategory = data.category || (categories.length > 0 ? categories[0] : '')
+      const primaryCategoryLabel = data.categoryLabel || (categoryLabels.length > 0 ? categoryLabels[0] : '')
 
       const productData = {
         ...data,
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
       }
 
       const docRef = await adminDb.collection('products').add(productData)
+      invalidateCache()
 
       logAudit({
         userId: authedReq.user.uid,

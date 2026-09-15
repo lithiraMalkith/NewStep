@@ -17,6 +17,8 @@ export const productSchema = z.object({
   categoryLabel: z.string().min(1, 'Category label is required'),
   categories: z.array(z.string()).optional().default([]),
   categoryLabels: z.array(z.string()).optional().default([]),
+  subCategory: z.string().nullable().optional(),
+  subSubCategory: z.string().nullable().optional(),
   details: z.array(z.string()).optional().default([]),
   variants: z.array(z.object({
     size: z.number(),
@@ -71,6 +73,9 @@ export const categorySchema = z.object({
   description: z.string().max(200).optional().or(z.literal('')),
   image: z.string().optional().or(z.literal('')),
   blurb: z.string().max(100).optional().or(z.literal('')),
+  parentId: z.string().nullable().default(null),
+  depth: z.number().int().min(0).max(2).default(0),
+  isActive: z.boolean().default(true),
   order: z.number().int().min(0).default(0),
 })
 

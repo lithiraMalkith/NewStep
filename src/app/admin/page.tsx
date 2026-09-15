@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
+import { useAdminTheme } from '@/contexts/admin-theme-context'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useGSAP } from '@gsap/react'
@@ -38,15 +39,31 @@ import {
 } from 'recharts'
 import type { DashboardStats } from '@/types'
 
-const CATEGORY_COLORS = ['#F7F4EE', '#D4CBBF', '#9E978C', '#5C564E']
+const CATEGORY_COLORS_DARK = ['#F7F4EE', '#D4CBBF', '#9E978C', '#5C564E']
+const CATEGORY_COLORS_LIGHT = ['#1A1A1A', '#4A4540', '#7A756E', '#A39E93']
 
 export default function AdminDashboardPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  const { theme } = useAdminTheme()
+  const isLight = theme === 'light'
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Theme-aware chart colors
+  const CATEGORY_COLORS = isLight ? CATEGORY_COLORS_LIGHT : CATEGORY_COLORS_DARK
+  const chartStroke = isLight ? '#1A1A1A' : '#F7F4EE'
+  const chartStrokeSecondary = isLight ? '#666' : '#8A8478'
+  const chartGrid = isLight ? '#D5D0C8' : '#24221F'
+  const chartAxisColor = isLight ? '#555' : '#8A8478'
+  const chartBarFill = isLight ? '#1A1A1A' : '#F7F4EE'
+  const chartBarFillSecondary = isLight ? '#999' : '#8A8478'
+  const tooltipBg = isLight ? '#FFFFFF' : '#141414'
+  const tooltipBorder = isLight ? '#D5D0C8' : '#24221F'
+  const tooltipLabelColor = isLight ? '#1A1A1A' : '#F7F4EE'
+  const gradientTop = isLight ? '#1A1A1A' : '#F7F4EE'
 
   useEffect(() => {
     if (authLoading) return
@@ -264,22 +281,22 @@ export default function AdminDashboardPage() {
             <AreaChart data={stats.revenueData}>
               <defs>
                 <linearGradient id="creamGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#F7F4EE" stopOpacity={0.35}/>
-                  <stop offset="95%" stopColor="#F7F4EE" stopOpacity={0}/>
+                  <stop offset="5%" stopColor={gradientTop} stopOpacity={0.35}/>
+                  <stop offset="95%" stopColor={gradientTop} stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#24221F" vertical={false} />
-              <XAxis dataKey="day" stroke="#8A8478" style={{ fontSize: '11px' }} />
-              <YAxis stroke="#8A8478" style={{ fontSize: '11px' }} tickFormatter={(val) => `Rs.${(val/1000).toFixed(0)}k`} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} vertical={false} />
+              <XAxis dataKey="day" stroke={chartAxisColor} style={{ fontSize: '11px' }} />
+              <YAxis stroke={chartAxisColor} style={{ fontSize: '11px' }} tickFormatter={(val) => `Rs.${(val/1000).toFixed(0)}k`} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#141414', border: '1px solid #24221F', borderRadius: '8px' }}
-                labelStyle={{ color: '#F7F4EE', fontWeight: 'bold' }}
+                contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: '8px' }}
+                labelStyle={{ color: tooltipLabelColor, fontWeight: 'bold' }}
                 formatter={(value) => [`Rs. ${Number(value).toLocaleString()}`, 'Revenue']}
               />
               <Area
                 type="monotone"
                 dataKey="revenue"
-                stroke="#F7F4EE"
+                stroke={chartStroke}
                 strokeWidth={2.5}
                 fillOpacity={1}
                 fill="url(#creamGradient)"
@@ -299,14 +316,14 @@ export default function AdminDashboardPage() {
 
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={stats.ordersData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#24221F" vertical={false} />
-              <XAxis dataKey="day" stroke="#8A8478" style={{ fontSize: '11px' }} />
-              <YAxis stroke="#8A8478" style={{ fontSize: '11px' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} vertical={false} />
+              <XAxis dataKey="day" stroke={chartAxisColor} style={{ fontSize: '11px' }} />
+              <YAxis stroke={chartAxisColor} style={{ fontSize: '11px' }} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#141414', border: '1px solid #24221F', borderRadius: '8px' }}
+                contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: '8px' }}
               />
-              <Bar dataKey="orders" fill="#F7F4EE" radius={[4, 4, 0, 0]} name="Total Placed" />
-              <Bar dataKey="completed" fill="#8A8478" radius={[4, 4, 0, 0]} name="Delivered" />
+              <Bar dataKey="orders" fill={chartBarFill} radius={[4, 4, 0, 0]} name="Total Placed" />
+              <Bar dataKey="completed" fill={chartBarFillSecondary} radius={[4, 4, 0, 0]} name="Delivered" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -336,7 +353,7 @@ export default function AdminDashboardPage() {
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{ backgroundColor: '#141414', border: '1px solid #24221F', borderRadius: '8px' }}
+                contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: '8px' }}
                 formatter={(value) => [`Rs. ${Number(value).toLocaleString()}`, 'Revenue']}
               />
             </PieChart>
